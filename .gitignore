@@ -41,3 +41,35 @@ Thumbs.db
 
 # Spring Boot
 spring-boot-devtools.properties
+
+# Environment variables and secrets
+.env
+*.env.local
+*.env.production
+
+# Token files
+*token*.txt
+*token*.json
+admin_token.txt
+
+# Keycloak sensitive data
+keycloak/realm-export.json
+
+# Test artifacts and reports
+test*.js
+test*.sh
+test*.py
+*test-report*.json
+*test-report*.md
+*TEST_REPORT*.md
+*REPORT*.md
+*SUMMARY*.txt
+verify-*.js
+browser-test.js
+*.png
+*.html
+screenshots/
+test-results/
+cookies*.txt
+node_modules/
+package-lock.json

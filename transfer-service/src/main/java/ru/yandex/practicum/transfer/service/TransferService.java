@@ -1,0 +1,107 @@
+package ru.yandex.practicum.transfer.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
+import ru.yandex.practicum.transfer.client.NotificationClient;
+import ru.yandex.practicum.transfer.dto.AccountDto;
+import ru.yandex.practicum.transfer.dto.TransferRequest;
+import ru.yandex.practicum.transfer.dto.TransferResponse;
+import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
+import ru.yandex.practicum.transfer.exception.InvalidTransferException;
+import ru.yandex.practicum.transfer.exception.TransferException;
+
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class TransferService {
+
+    private final WebClient webClient;
+    private final NotificationClient notificationClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${services.accounts.host:accounts-service}")
+    private String accountsServiceHost;
+
+    public Mono<TransferResponse> transfer(TransferRequest request) {
+        log.info("Processing transfer from {} to {} amount {}",
+                request.senderLogin(), request.recipientLogin(), request.amount());
+        if (request.amount() == null || request.amount() <= 0) {
+            return Mono.error(new InvalidTransferException("Amount must be positive"));
+        }
+        if (request.senderLogin().equals(request.recipientLogin())) {
+            return Mono.error(new InvalidTransferException("Cannot transfer to yourself"));
+        }
+        return webClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("http")
+                        .host(accountsServiceHost)
+                        .path("/api/accounts/internal/transfer")
+                        .queryParam("from", request.senderLogin())
+                        .queryParam("to", request.recipientLogin())
+                        .queryParam("amount", request.amount())
+                        .build())
+                .retrieve()
+                .bodyToMono(TransferResult.class)
+                .flatMap(result -> {
+                    log.info("Transfer successful. Sender new balance: {}, Recipient new balance: {}",
+                            result.senderBalance(), result.recipientBalance());
+                    Mono<Void> senderNotification = notificationClient.sendTransferNotification(
+                            request.senderLogin(),
+                            "Вы перевели " + request.amount() + " руб пользователю " +
+                            result.recipientName() + ". Новый баланс: " + result.senderBalance() + " руб",
+                            "TRANSFER_SENT"
+                    );
+                    Mono<Void> recipientNotification = notificationClient.sendTransferNotification(
+                            request.recipientLogin(),
+                            "Вы получили " + request.amount() + " руб от пользователя " +
+                            result.senderName() + ". Новый баланс: " + result.recipientBalance() + " руб",
+                            "TRANSFER_RECEIVED"
+                    );
+                    return Mono.zip(senderNotification, recipientNotification)
+                            .onErrorResume(notificationError -> {
+                                log.warn("Failed to send notifications, but transfer was successful", notificationError);
+                                return Mono.empty();
+                            })
+                            .then(Mono.just(new TransferResponse(
+                                    true,
+                                    "Transfer successful",
+                                    result.senderBalance(),
+                                    result.recipientBalance()
+                            )));
+                })
+                .onErrorResume(e -> {
+                    log.error("Transfer failed: {}", e.getMessage());
+                    String errorMessage = extractErrorMessage(e);
+                    if (errorMessage != null && errorMessage.toLowerCase().contains("insufficient funds")) {
+                        return Mono.error(new InsufficientFundsException(errorMessage));
+                    }
+                    return Mono.error(new TransferException(errorMessage));
+                });
+    }
+
+    private String extractErrorMessage(Throwable e) {
+        if (e instanceof WebClientResponseException webEx) {
+            try {
+                String responseBody = webEx.getResponseBodyAsString();
+                Map<String, Object> errorResponse = objectMapper.readValue(responseBody, Map.class);
+                String message = (String) errorResponse.get("message");
+                if (message != null) {
+                    return message;
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to parse error response: {}", ex.getMessage());
+            }
+        }
+        return "Transfer failed: " + e.getMessage();
+    }
+
+    record TransferResult(Integer senderBalance, Integer recipientBalance, String senderName, String recipientName) {}
+}
