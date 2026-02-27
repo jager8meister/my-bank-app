@@ -24,7 +24,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_openid')")
+    @PreAuthorize("hasAuthority('SCOPE_microservice-scope')")
     public Mono<NotificationResponseDto> sendNotification(
             @RequestBody @Valid NotificationRequestDto request
     ) {

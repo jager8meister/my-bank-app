@@ -9,8 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class NotificationClientTest {
 
@@ -28,15 +28,18 @@ class NotificationClientTest {
 
     @Mock
     private WebClient.ResponseSpec responseSpec;
+
     private NotificationClient notificationClient;
+
     @BeforeEach
     void setUp() {
         notificationClient = new NotificationClient(webClient);
     }
+
     @Test
     void shouldSendAccountUpdatedNotificationSuccessfully() {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
         when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
@@ -44,10 +47,11 @@ class NotificationClientTest {
         StepVerifier.create(result)
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleNotificationError() {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
         when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class))

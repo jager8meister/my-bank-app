@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
+import ru.yandex.practicum.accounts.dto.CreateAccountRequest;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
 import ru.yandex.practicum.accounts.service.AccountService;
 import ru.yandex.practicum.accounts.util.AuthorizationUtils;
@@ -54,15 +57,15 @@ public class AccountController {
             @RequestParam
             @NotNull(message = "Balance is required")
             @Positive(message = "Balance must be positive")
-            Integer balance,
+            Long balance,
             Authentication authentication
     ) {
-        return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
+        return AuthorizationUtils.checkMicroserviceAuthorizationReactive(authentication, "Only microservices can update balance directly")
                 .then(accountService.updateBalance(login, balance));
     }
 
     @GetMapping("/{login}/balance")
-    public Mono<Integer> getBalance(
+    public Mono<Long> getBalance(
             @PathVariable @NotBlank(message = "Login is required") String login,
             Authentication authentication
     ) {
@@ -71,12 +74,12 @@ public class AccountController {
     }
 
     @PostMapping("/{login}/deposit")
-    public Mono<Integer> depositCash(
+    public Mono<Long> depositCash(
             @PathVariable @NotBlank(message = "Login is required") String login,
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
-            Integer amount,
+            Long amount,
             Authentication authentication
     ) {
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
@@ -84,21 +87,26 @@ public class AccountController {
     }
 
     @PostMapping("/{login}/withdraw")
-    public Mono<Integer> withdrawCash(
+    public Mono<Long> withdrawCash(
             @PathVariable @NotBlank(message = "Login is required") String login,
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
-            Integer amount,
+            Long amount,
             Authentication authentication
     ) {
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.withdrawCash(login, amount));
     }
 
+    @PostMapping("/register")
+    public Mono<ResponseEntity<Void>> createAccount(@RequestBody @Valid CreateAccountRequest request) {
+        return accountService.createAccount(request)
+                .thenReturn(ResponseEntity.<Void>status(HttpStatus.CREATED).build());
+    }
+
     /**
      * Internal endpoint for transfers - should only be called by transfer-service
-     * This endpoint requires microservice authentication
      */
     @PostMapping("/internal/transfer")
     public Mono<AccountService.TransferResult> internalTransfer(
@@ -107,7 +115,7 @@ public class AccountController {
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
-            Integer amount,
+            Long amount,
             Authentication authentication
     ) {
         return AuthorizationUtils.checkMicroserviceAuthorizationReactive(authentication,

@@ -83,7 +83,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("Should deposit cash and update balance in database")
     void shouldDepositCashAndUpdateBalance() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
-        Integer initialBalance = accountRepository.findByLogin("ivanov")
+        Long initialBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
         webTestClient
@@ -93,18 +93,18 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .uri("/api/accounts/ivanov/deposit?amount=1000")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(Integer.class)
-                .isEqualTo(initialBalance + 1000);
-        Integer newBalance = accountRepository.findByLogin("ivanov")
+                .expectBody(Long.class)
+                .isEqualTo(initialBalance + 1000L);
+        Long newBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
-        assertThat(newBalance).isEqualTo(initialBalance + 1000);
+        assertThat(newBalance).isEqualTo(initialBalance + 1000L);
     }
     @Test
     @DisplayName("Should withdraw cash and update balance in database")
     void shouldWithdrawCashAndUpdateBalance() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
-        Integer initialBalance = accountRepository.findByLogin("ivanov")
+        Long initialBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
         webTestClient
@@ -114,12 +114,12 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .uri("/api/accounts/ivanov/withdraw?amount=500")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(Integer.class)
-                .isEqualTo(initialBalance - 500);
-        Integer newBalance = accountRepository.findByLogin("ivanov")
+                .expectBody(Long.class)
+                .isEqualTo(initialBalance - 500L);
+        Long newBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
-        assertThat(newBalance).isEqualTo(initialBalance - 500);
+        assertThat(newBalance).isEqualTo(initialBalance - 500L);
     }
     @Test
     @DisplayName("Should reject withdrawal with insufficient funds")
@@ -132,19 +132,19 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .uri("/api/accounts/sidorov/withdraw?amount=2000")
                 .exchange()
                 .expectStatus().is5xxServerError();
-        Integer balance = accountRepository.findByLogin("sidorov")
+        Long balance = accountRepository.findByLogin("sidorov")
                 .map(Account::getBalance)
                 .block();
-        assertThat(balance).isEqualTo(1000);
+        assertThat(balance).isEqualTo(1000L);
     }
     @Test
     @DisplayName("Should transfer money between accounts in database")
     void shouldTransferMoneyBetweenAccounts() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
-        Integer ivanovInitialBalance = accountRepository.findByLogin("ivanov")
+        Long ivanovInitialBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
-        Integer petrovInitialBalance = accountRepository.findByLogin("petrov")
+        Long petrovInitialBalance = accountRepository.findByLogin("petrov")
                 .map(Account::getBalance)
                 .block();
         webTestClient
@@ -157,14 +157,14 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .expectBody()
                 .jsonPath("$.senderBalance").isEqualTo(ivanovInitialBalance - 500)
                 .jsonPath("$.recipientBalance").isEqualTo(petrovInitialBalance + 500);
-        Integer ivanovNewBalance = accountRepository.findByLogin("ivanov")
+        Long ivanovNewBalance = accountRepository.findByLogin("ivanov")
                 .map(Account::getBalance)
                 .block();
-        Integer petrovNewBalance = accountRepository.findByLogin("petrov")
+        Long petrovNewBalance = accountRepository.findByLogin("petrov")
                 .map(Account::getBalance)
                 .block();
-        assertThat(ivanovNewBalance).isEqualTo(ivanovInitialBalance - 500);
-        assertThat(petrovNewBalance).isEqualTo(petrovInitialBalance + 500);
+        assertThat(ivanovNewBalance).isEqualTo(ivanovInitialBalance - 500L);
+        assertThat(petrovNewBalance).isEqualTo(petrovInitialBalance + 500L);
     }
     @Test
     @DisplayName("Should enforce authorization - user can only access own account")

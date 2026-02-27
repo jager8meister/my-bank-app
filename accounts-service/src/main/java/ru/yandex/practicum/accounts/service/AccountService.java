@@ -3,12 +3,13 @@ package ru.yandex.practicum.accounts.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import org.springframework.dao.DataIntegrityViolationException;
 import ru.yandex.practicum.accounts.client.NotificationClient;
-import ru.yandex.practicum.accounts.dto.AccountDto;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
+import ru.yandex.practicum.accounts.dto.CreateAccountRequest;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
+import ru.yandex.practicum.accounts.exception.AccountAlreadyExistsException;
 import ru.yandex.practicum.accounts.exception.AccountNotFoundException;
 import ru.yandex.practicum.accounts.exception.InsufficientFundsException;
 import ru.yandex.practicum.accounts.exception.InvalidAmountException;
@@ -23,10 +24,11 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final NotificationClient notificationClient;
 
+    @Transactional(readOnly = true)
     public Mono<AccountResponse> getAccountInfo(String login) {
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
-                .flatMap(account -> getOtherAccounts(login)
+                .flatMap(account -> accountRepository.findOtherAccounts(login)
                         .collectList()
                         .map(otherAccounts -> new AccountResponse(
                                 account.getName(),
@@ -39,12 +41,6 @@ public class AccountService {
                 );
     }
 
-    private Flux<AccountDto> getOtherAccounts(String currentLogin) {
-        return accountRepository.findAll()
-                .filter(acc -> !acc.getLogin().equals(currentLogin))
-                .map(acc -> new AccountDto(acc.getLogin(), acc.getName()));
-    }
-
     @Transactional
     public Mono<AccountResponse> updateAccount(String login, UpdateAccountRequest request) {
         return accountRepository.findByLogin(login)
@@ -54,16 +50,14 @@ public class AccountService {
                     account.setBirthdate(request.birthdate());
                     return accountRepository.save(account);
                 })
-                .flatMap(savedAccount -> {
-                    return notificationClient.sendAccountUpdatedNotification(
-                            savedAccount.getLogin(),
-                            "Данные вашего аккаунта были обновлены: " + savedAccount.getName()
-                    ).then(getAccountInfo(login));
-                });
+                .flatMap(savedAccount -> notificationClient.sendAccountUpdatedNotification(
+                        savedAccount.getLogin(),
+                        "Данные вашего аккаунта были обновлены: " + savedAccount.getName()
+                ).then(getAccountInfo(login)));
     }
 
     @Transactional
-    public Mono<Void> updateBalance(String login, Integer newBalance) {
+    public Mono<Void> updateBalance(String login, Long newBalance) {
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
                 .flatMap(account -> {
@@ -73,58 +67,52 @@ public class AccountService {
                 .then();
     }
 
-    public Mono<Integer> getBalance(String login) {
+    @Transactional(readOnly = true)
+    public Mono<Long> getBalance(String login) {
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
                 .map(Account::getBalance);
     }
 
     @Transactional
-    public Mono<Integer> depositCash(String login, Integer amount) {
+    public Mono<Long> depositCash(String login, Long amount) {
         if (amount == null || amount <= 0) {
             return Mono.error(new InvalidAmountException());
         }
-        // Check for integer overflow before deposit
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
                 .flatMap(account -> {
-                    // Check if adding amount would cause overflow
-                    if (amount > Integer.MAX_VALUE - account.getBalance()) {
+                    if (amount > Long.MAX_VALUE - account.getBalance()) {
                         return Mono.error(new InvalidAmountException("Amount would cause balance overflow"));
                     }
-                    // Atomic increment
                     return accountRepository.incrementBalance(login, amount)
                             .flatMap(updated -> {
                                 if (updated == 0) {
                                     return Mono.error(new AccountNotFoundException(login));
                                 }
-                                // Fetch and return new balance
                                 return getBalance(login);
                             });
                 });
     }
 
     @Transactional
-    public Mono<Integer> withdrawCash(String login, Integer amount) {
+    public Mono<Long> withdrawCash(String login, Long amount) {
         if (amount == null || amount <= 0) {
             return Mono.error(new InvalidAmountException());
         }
-        // Atomic decrement with balance check
         return accountRepository.decrementBalanceIfSufficient(login, amount)
                 .flatMap(updated -> {
                     if (updated == 0) {
-                        // Either account not found or insufficient funds
                         return accountRepository.findByLogin(login)
                                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
                                 .flatMap(account -> Mono.error(new InsufficientFundsException(account.getBalance())));
                     }
-                    // Fetch and return new balance
                     return getBalance(login);
                 });
     }
 
     @Transactional
-    public Mono<TransferResult> transferMoney(String fromLogin, String toLogin, Integer amount) {
+    public Mono<TransferResult> transferMoney(String fromLogin, String toLogin, Long amount) {
         if (amount == null || amount <= 0) {
             return Mono.error(new InvalidAmountException());
         }
@@ -132,53 +120,52 @@ public class AccountService {
             return Mono.error(new InvalidTransferException("Cannot transfer to yourself"));
         }
 
-        // First verify both accounts exist and check for overflow
-        Mono<Account> senderMono = accountRepository.findByLogin(fromLogin)
-                .switchIfEmpty(Mono.error(new AccountNotFoundException(fromLogin)));
-        Mono<Account> recipientMono = accountRepository.findByLogin(toLogin)
-                .switchIfEmpty(Mono.error(new AccountNotFoundException(toLogin)));
-
-        return Mono.zip(senderMono, recipientMono)
-                .flatMap(tuple -> {
-                    Account sender = tuple.getT1();
-                    Account recipient = tuple.getT2();
-
-                    // Check for overflow on recipient side
-                    if (amount > Integer.MAX_VALUE - recipient.getBalance()) {
-                        return Mono.error(new InvalidAmountException("Transfer would cause recipient balance overflow"));
+        // Validate recipient exists before touching sender balance
+        return accountRepository.findByLogin(toLogin)
+                .switchIfEmpty(Mono.error(new AccountNotFoundException(toLogin)))
+                .flatMap(ignored -> accountRepository.decrementBalanceIfSufficient(fromLogin, amount))
+                .flatMap(senderUpdated -> {
+                    if (senderUpdated == 0) {
+                        // Re-query actual current balance — upfront stale read is unsafe under concurrency
+                        return accountRepository.findByLogin(fromLogin)
+                                .switchIfEmpty(Mono.error(new AccountNotFoundException(fromLogin)))
+                                .flatMap(sender -> Mono.error(new InsufficientFundsException(sender.getBalance())));
                     }
 
-                    // Step 1: Atomically deduct from sender (with balance check)
-                    return accountRepository.decrementBalanceIfSufficient(fromLogin, amount)
-                            .flatMap(senderUpdated -> {
-                                if (senderUpdated == 0) {
-                                    // Insufficient funds (balance check failed at DB level)
-                                    return Mono.error(new InsufficientFundsException(sender.getBalance()));
+                    return accountRepository.incrementBalance(toLogin, amount)
+                            .flatMap(recipientUpdated -> {
+                                if (recipientUpdated == 0) {
+                                    return Mono.error(new AccountNotFoundException(toLogin));
                                 }
 
-                                // Step 2: Atomically add to recipient
-                                return accountRepository.incrementBalance(toLogin, amount)
-                                        .flatMap(recipientUpdated -> {
-                                            if (recipientUpdated == 0) {
-                                                // This should never happen as we verified account exists
-                                                // But if it does, transaction will roll back
-                                                return Mono.error(new AccountNotFoundException(toLogin));
-                                            }
-
-                                            // Step 3: Fetch updated balances and return result
-                                            return Mono.zip(
-                                                    accountRepository.findByLogin(fromLogin),
-                                                    accountRepository.findByLogin(toLogin)
-                                            ).map(updatedTuple -> new TransferResult(
-                                                    updatedTuple.getT1().getBalance(),
-                                                    updatedTuple.getT2().getBalance(),
-                                                    updatedTuple.getT1().getName(),
-                                                    updatedTuple.getT2().getName()
-                                            ));
-                                        });
+                                return Mono.zip(
+                                        accountRepository.findByLogin(fromLogin),
+                                        accountRepository.findByLogin(toLogin)
+                                ).map(tuple -> new TransferResult(
+                                        tuple.getT1().getBalance(),
+                                        tuple.getT2().getBalance(),
+                                        tuple.getT1().getName(),
+                                        tuple.getT2().getName()
+                                ));
                             });
                 });
     }
 
-    public record TransferResult(Integer senderBalance, Integer recipientBalance, String senderName, String recipientName) {}
+    @Transactional
+    public Mono<Void> createAccount(CreateAccountRequest request) {
+        return accountRepository.findByLogin(request.login())
+                .flatMap(existing -> Mono.<Void>error(new AccountAlreadyExistsException(request.login())))
+                .switchIfEmpty(Mono.defer(() ->
+                        accountRepository.insertAccount(request.login(), request.name(), request.birthdate())
+                                .flatMap(rows -> rows == 0
+                                        ? Mono.error(new AccountAlreadyExistsException(request.login()))
+                                        : Mono.empty())
+                ))
+                .onErrorMap(
+                        e -> e instanceof DataIntegrityViolationException,
+                        e -> new AccountAlreadyExistsException(request.login())
+                );
+    }
+
+    public record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {}
 }

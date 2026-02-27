@@ -2,6 +2,7 @@ package ru.yandex.practicum.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -15,13 +16,14 @@ public class SecurityConfig {
         http
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/**").permitAll()
-                        .pathMatchers("/api/**").permitAll()  // API endpoints are protected by backend services
+                        .pathMatchers("/login/**", "/oauth2/**").permitAll()
+                        .pathMatchers("/api/**").authenticated()
                         .anyExchange().authenticated()
                 )
-                .oauth2Login(oauth2 -> {})
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> {})
+                        .jwt(Customizer.withDefaults())
                 )
+                .oauth2Login(Customizer.withDefaults())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable);
         return http.build();
     }

@@ -7,6 +7,6 @@ public record AccountDto(
         String login,
         String name,
         LocalDate birthdate,
-        Integer balance
+        Long balance
 ) {
 }

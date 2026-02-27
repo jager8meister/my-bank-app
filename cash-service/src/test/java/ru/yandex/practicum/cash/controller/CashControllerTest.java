@@ -42,8 +42,8 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} - Should process PUT operation")
     void shouldProcessPutOperation() {
-        CashOperationRequest request = new CashOperationRequest(500, CashAction.PUT);
-        CashResponse response = new CashResponse(5500, null, "Положено 500 руб");
+        CashOperationRequest request = new CashOperationRequest(500L, CashAction.PUT);
+        CashResponse response = new CashResponse(5500L, null, "Положено 500 руб");
         when(cashService.processCashOperation(eq("ivanov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
@@ -64,8 +64,8 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} - Should process GET operation")
     void shouldProcessGetOperation() {
-        CashOperationRequest request = new CashOperationRequest(500, CashAction.GET);
-        CashResponse response = new CashResponse(4500, null, "Снято 500 руб");
+        CashOperationRequest request = new CashOperationRequest(500L, CashAction.GET);
+        CashResponse response = new CashResponse(4500L, null, "Снято 500 руб");
         when(cashService.processCashOperation(eq("ivanov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
@@ -84,7 +84,7 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} - Should return error for insufficient funds")
     void shouldReturnErrorForInsufficientFunds() {
-        CashOperationRequest request = new CashOperationRequest(10000, CashAction.GET);
+        CashOperationRequest request = new CashOperationRequest(10000L, CashAction.GET);
         CashResponse response = new CashResponse(null, List.of("Недостаточно средств на счету"), null);
         when(cashService.processCashOperation(eq("ivanov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));
@@ -105,8 +105,8 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} - Should handle different users")
     void shouldHandleDifferentUsers() {
-        CashOperationRequest request = new CashOperationRequest(1000, CashAction.PUT);
-        CashResponse response = new CashResponse(4000, null, "Положено 1000 руб");
+        CashOperationRequest request = new CashOperationRequest(1000L, CashAction.PUT);
+        CashResponse response = new CashResponse(4000L, null, "Положено 1000 руб");
         when(cashService.processCashOperation(eq("petrov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));
         Authentication auth = SecurityTestUtils.createUserAuthentication("petrov");
@@ -124,7 +124,7 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} - Should handle service errors")
     void shouldHandleServiceErrors() {
-        CashOperationRequest request = new CashOperationRequest(500, CashAction.PUT);
+        CashOperationRequest request = new CashOperationRequest(500L, CashAction.PUT);
         CashResponse response = new CashResponse(null, List.of("Ошибка операции: Service unavailable"), null);
         when(cashService.processCashOperation(eq("ivanov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));

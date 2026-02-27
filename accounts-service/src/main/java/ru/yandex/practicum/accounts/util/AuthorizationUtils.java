@@ -22,7 +22,7 @@ public final class AuthorizationUtils {
             return Mono.error(new UnauthorizedException("Valid JWT authentication required"));
         }
         for (var authority : jwtAuth.getAuthorities()) {
-            if (authority.getAuthority().toLowerCase().contains("microservice")) {
+            if ("SCOPE_microservice-scope".equals(authority.getAuthority())) {
                 return Mono.empty();
             }
         }
@@ -34,33 +34,6 @@ public final class AuthorizationUtils {
         return Mono.empty();
     }
 
-    public static void checkAuthorization(
-            String resourceOwner,
-            Authentication authentication,
-            String errorMessage
-    ) {
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new UnauthorizedException("Valid JWT authentication required");
-        }
-        for (var authority : jwtAuth.getAuthorities()) {
-            if (authority.getAuthority().toLowerCase().contains("microservice")) {
-                return;
-            }
-        }
-        Jwt jwt = jwtAuth.getToken();
-        String preferredUsername = jwt.getClaimAsString("preferred_username");
-        if (preferredUsername == null || !resourceOwner.equals(preferredUsername)) {
-            throw new ForbiddenException(errorMessage);
-        }
-    }
-
-    public static void checkAuthorization(String resourceOwner, Authentication authentication) {
-        checkAuthorization(resourceOwner, authentication, "You can only access your own resources");
-    }
-
-    /**
-     * Check that the caller is a microservice (not a regular user)
-     */
     public static Mono<Void> checkMicroserviceAuthorizationReactive(
             Authentication authentication,
             String errorMessage
@@ -69,7 +42,7 @@ public final class AuthorizationUtils {
             return Mono.error(new UnauthorizedException("Valid JWT authentication required"));
         }
         for (var authority : jwtAuth.getAuthorities()) {
-            if (authority.getAuthority().toLowerCase().contains("microservice")) {
+            if ("SCOPE_microservice-scope".equals(authority.getAuthority())) {
                 return Mono.empty();
             }
         }

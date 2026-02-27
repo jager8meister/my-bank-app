@@ -2,12 +2,10 @@ package ru.yandex.practicum.cash.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -16,19 +14,24 @@ public class NotificationClient {
 
     private final WebClient webClient;
 
+    @Value("${services.notifications.host:notifications-service}")
+    private String notificationsServiceHost;
+
     public Mono<Void> sendCashOperationNotification(String recipient, String message, String type) {
         log.info("Sending {} notification to {}", type, recipient);
-        Map<String, Object> request = new HashMap<>();
-        request.put("recipient", recipient);
-        request.put("message", message);
-        request.put("type", type);
         return webClient.post()
-                .uri("http://NOTIFICATIONS-SERVICE/api/notifications")
-                .bodyValue(request)
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("lb")
+                        .host(notificationsServiceHost)
+                        .path("/api/notifications")
+                        .build())
+                .bodyValue(new NotificationRequest(recipient, message, type))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .doOnSuccess(v -> log.info("Notification sent successfully to {}", recipient))
                 .doOnError(e -> log.error("Failed to send notification to {}: {}", recipient, e.getMessage()))
                 .onErrorResume(e -> Mono.empty());
     }
+
+    private record NotificationRequest(String recipient, String message, String type) {}
 }

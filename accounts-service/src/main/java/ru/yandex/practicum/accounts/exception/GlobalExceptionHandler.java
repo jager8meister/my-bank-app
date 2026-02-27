@@ -1,5 +1,6 @@
 package ru.yandex.practicum.accounts.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,14 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(createErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN)));
+    }
+
+    @ExceptionHandler(AccountAlreadyExistsException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleAccountAlreadyExistsException(AccountAlreadyExistsException ex) {
+        log.error("Account already exists: {}", ex.getMessage());
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(createErrorResponse(ex.getMessage(), HttpStatus.CONFLICT)));
     }
 
     @ExceptionHandler(AccountNotFoundException.class)
@@ -70,6 +79,18 @@ public class GlobalExceptionHandler {
                 .getFieldErrors()
                 .stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(createErrorResponse("Validation failed: " + errors, HttpStatus.BAD_REQUEST)));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleConstraintViolationException(ConstraintViolationException ex) {
+        log.error("Constraint violation: {}", ex.getMessage());
+        String errors = ex.getConstraintViolations()
+                .stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
                 .collect(Collectors.joining(", "));
         return Mono.just(ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)

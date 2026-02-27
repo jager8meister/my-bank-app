@@ -1,6 +1,5 @@
 package ru.yandex.practicum.accounts.model;
 
-import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 @Table(name = "accounts", schema = "accounts_schema")
@@ -40,12 +38,7 @@ public class Account {
     private LocalDate birthdate;
 
     @Column("balance")
-    private Integer balance;
-
-    @AssertTrue(message = "Age must be at least 18 years")
-    public boolean isBirthdateValid() {
-        return birthdate == null || ChronoUnit.YEARS.between(birthdate, LocalDate.now()) >= 18;
-    }
+    private Long balance;
 
     @Override
     public boolean equals(Object o) {

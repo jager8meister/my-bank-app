@@ -3,7 +3,7 @@ package ru.yandex.practicum.cash.dto;
 import java.util.List;
 
 public record CashResponse(
-        Integer newBalance,
+        Long newBalance,
         List<String> errors,
         String info
 ) {

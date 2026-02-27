@@ -6,7 +6,10 @@ import ru.yandex.practicum.accounts.validation.Adult;
 
 import java.time.LocalDate;
 
-public record UpdateAccountRequest(
+public record CreateAccountRequest(
+        @NotBlank(message = "Login is required")
+        String login,
+
         @NotBlank(message = "Name is required")
         String name,
 

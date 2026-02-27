@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: bank-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -29,6 +30,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bank-keycloak
+    restart: unless-stopped
     command: start --import-realm
     environment:
       KC_DB: postgres
@@ -40,7 +42,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_HTTP_ENABLED: true
       KC_HTTP_PORT: ${KEYCLOAK_PORT}
-      KC_HOSTNAME: localhost
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
       KC_HOSTNAME_PORT: ${KEYCLOAK_PORT}
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
@@ -66,7 +68,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/${KEYCLOAK_PORT};echo -e \"GET /health/ready HTTP/1.1\nhost: 127.0.0.1:${KEYCLOAK_PORT}\n\" >&3;grep -q '200 OK' <&3"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/${KEYCLOAK_PORT};echo -e \"GET /health/ready HTTP/1.1\\nhost: 127.0.0.1:${KEYCLOAK_PORT}\\n\" >&3;grep -q '200 OK' <&3"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -77,6 +79,9 @@ services:
       context: .
       dockerfile: ./config-server/Dockerfile
     container_name: bank-config-server
+    restart: unless-stopped
+    environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
     deploy:
       resources:
         limits:
@@ -88,7 +93,7 @@ services:
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8888/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${CONFIG_SERVER_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -99,6 +104,10 @@ services:
       context: .
       dockerfile: ./eureka-server/Dockerfile
     container_name: bank-eureka-server
+    restart: unless-stopped
+    environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
     deploy:
       resources:
         limits:
@@ -115,7 +124,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8761/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${EUREKA_SERVER_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -126,8 +135,15 @@ services:
       context: .
       dockerfile: ./gateway-service/Dockerfile
     container_name: bank-gateway-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
       GATEWAY_CLIENT_SECRET: ${GATEWAY_CLIENT_SECRET}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
     deploy:
       resources:
         limits:
@@ -146,7 +162,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${GATEWAY_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -157,9 +173,19 @@ services:
       context: .
       dockerfile: ./accounts-service/Dockerfile
     container_name: bank-accounts-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
       DB_PASSWORD: ${DB_PASSWORD}
       MICROSERVICES_CLIENT_SECRET: ${MICROSERVICES_CLIENT_SECRET}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
     deploy:
       resources:
         limits:
@@ -180,7 +206,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${ACCOUNTS_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -191,8 +217,15 @@ services:
       context: .
       dockerfile: ./cash-service/Dockerfile
     container_name: bank-cash-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      CASH_SERVICE_PORT: ${CASH_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
       MICROSERVICES_CLIENT_SECRET: ${MICROSERVICES_CLIENT_SECRET}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
     deploy:
       resources:
         limits:
@@ -213,7 +246,7 @@ services:
       accounts-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${CASH_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -224,8 +257,18 @@ services:
       context: .
       dockerfile: ./auth-service/Dockerfile
     container_name: bank-auth-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
       DB_PASSWORD: ${DB_PASSWORD}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
     deploy:
       resources:
         limits:
@@ -244,7 +287,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${AUTH_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -255,8 +298,15 @@ services:
       context: .
       dockerfile: ./transfer-service/Dockerfile
     container_name: bank-transfer-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      TRANSFER_SERVICE_PORT: ${TRANSFER_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
       MICROSERVICES_CLIENT_SECRET: ${MICROSERVICES_CLIENT_SECRET}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
     deploy:
       resources:
         limits:
@@ -277,7 +327,7 @@ services:
       accounts-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${TRANSFER_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -288,6 +338,14 @@ services:
       context: .
       dockerfile: ./notifications-service/Dockerfile
     container_name: bank-notifications-service
+    restart: unless-stopped
+    environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      NOTIFICATIONS_SERVICE_PORT: ${NOTIFICATIONS_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
     deploy:
       resources:
         limits:
@@ -304,7 +362,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8086/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${NOTIFICATIONS_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5
@@ -315,10 +373,18 @@ services:
       context: .
       dockerfile: ./front-service/Dockerfile
     container_name: bank-front-service
+    restart: unless-stopped
     environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      FRONT_SERVICE_PORT: ${FRONT_SERVICE_PORT}
+      EUREKA_SERVER_PORT: ${EUREKA_SERVER_PORT}
+      GATEWAY_PORT: ${GATEWAY_PORT}
       FRONT_CLIENT_SECRET: ${FRONT_CLIENT_SECRET}
       KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL}
       KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     deploy:
       resources:
         limits:
@@ -337,7 +403,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${FRONT_SERVICE_PORT}/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 5

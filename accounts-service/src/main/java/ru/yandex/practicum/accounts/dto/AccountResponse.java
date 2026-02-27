@@ -6,7 +6,7 @@ import java.util.List;
 public record AccountResponse(
         String name,
         LocalDate birthdate,
-        Integer sum,
+        Long sum,
         List<AccountDto> accounts,
         List<String> errors,
         String info

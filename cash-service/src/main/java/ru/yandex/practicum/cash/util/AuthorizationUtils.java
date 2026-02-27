@@ -16,12 +16,13 @@ public final class AuthorizationUtils {
     public static Mono<Void> checkAuthorizationReactive(
             String resourceOwner,
             Authentication authentication,
-            String errorMessage) {
+            String errorMessage
+    ) {
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             return Mono.error(new UnauthorizedException("Valid JWT authentication required"));
         }
         for (var authority : jwtAuth.getAuthorities()) {
-            if (authority.getAuthority().contains("microservice")) {
+            if ("SCOPE_microservice-scope".equals(authority.getAuthority())) {
                 return Mono.empty();
             }
         }
@@ -31,28 +32,5 @@ public final class AuthorizationUtils {
             return Mono.error(new ForbiddenException(errorMessage));
         }
         return Mono.empty();
-    }
-
-    public static void checkAuthorization(
-            String resourceOwner,
-            Authentication authentication,
-            String errorMessage) {
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new UnauthorizedException("Valid JWT authentication required");
-        }
-        for (var authority : jwtAuth.getAuthorities()) {
-            if (authority.getAuthority().contains("microservice")) {
-                return;
-            }
-        }
-        Jwt jwt = jwtAuth.getToken();
-        String preferredUsername = jwt.getClaimAsString("preferred_username");
-        if (preferredUsername == null || !resourceOwner.equals(preferredUsername)) {
-            throw new ForbiddenException(errorMessage);
-        }
-    }
-
-    public static void checkAuthorization(String resourceOwner, Authentication authentication) {
-        checkAuthorization(resourceOwner, authentication, "You can only access your own resources");
     }
 }

@@ -49,8 +49,8 @@ public abstract class BaseContractTest {
         TransferResponse transferResponse = new TransferResponse(
                 true,
                 "Transfer successful",
-                9500,
-                10500
+                9500L,
+                10500L
         );
         when(transferService.transfer(any(TransferRequest.class)))
                 .thenReturn(Mono.just(transferResponse));

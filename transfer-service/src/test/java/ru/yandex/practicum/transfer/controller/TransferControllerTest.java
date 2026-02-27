@@ -36,8 +36,8 @@ class TransferControllerTest {
     private TransferService transferService;
     @Test
     void shouldTransferMoneyForAuthorizedUser() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
-        TransferResponse response = new TransferResponse(true, "Transfer successful", 4500, 5500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
+        TransferResponse response = new TransferResponse(true, "Transfer successful", 4500L, 5500L);
         when(transferService.transfer(any(TransferRequest.class))).thenReturn(Mono.just(response));
         Authentication auth = createUserAuthentication("ivanov");
         webTestClient
@@ -56,7 +56,8 @@ class TransferControllerTest {
     }
     @Test
     void shouldRejectTransferFromDifferentAccount() {
-        TransferRequest request = new TransferRequest("petrov", "sidorov", 500);
+        TransferRequest request = new TransferRequest("petrov", "sidorov", 500L);
+        when(transferService.transfer(any(TransferRequest.class))).thenReturn(Mono.empty());
         Authentication auth = createUserAuthentication("ivanov");
         webTestClient
                 .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
@@ -69,8 +70,8 @@ class TransferControllerTest {
     }
     @Test
     void shouldAllowServiceAccountToTransferFromAnyAccount() {
-        TransferRequest request = new TransferRequest("petrov", "sidorov", 500);
-        TransferResponse response = new TransferResponse(true, "Transfer successful", 4500, 5500);
+        TransferRequest request = new TransferRequest("petrov", "sidorov", 500L);
+        TransferResponse response = new TransferResponse(true, "Transfer successful", 4500L, 5500L);
         when(transferService.transfer(any(TransferRequest.class))).thenReturn(Mono.just(response));
         Authentication auth = createServiceAuthentication();
         webTestClient
@@ -86,7 +87,7 @@ class TransferControllerTest {
     }
     @Test
     void shouldHandleTransferFailure() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
         TransferResponse response = new TransferResponse(false, "Insufficient funds", null, null);
         when(transferService.transfer(any(TransferRequest.class))).thenReturn(Mono.just(response));
         Authentication auth = createUserAuthentication("ivanov");
@@ -104,7 +105,7 @@ class TransferControllerTest {
     }
     @Test
     void shouldHandleInvalidRequest() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", -100);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", -100L);
         Authentication auth = createUserAuthentication("ivanov");
         webTestClient
                 .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
@@ -132,10 +133,10 @@ class TransferControllerTest {
         Jwt jwt = Jwt.withTokenValue("test-service-token")
                 .header("alg", "RS256")
                 .claim("sub", "microservices-client")
-                .claim("scope", "microservice")
+                .claim("scope", "microservice-scope")
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
-        return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice")));
+        return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice-scope")));
     }
 }

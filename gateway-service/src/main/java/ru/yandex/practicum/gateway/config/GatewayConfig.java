@@ -23,9 +23,6 @@ public class GatewayConfig {
                         .path("/api/transfer/**")
                         .filters(f -> f.tokenRelay())
                         .uri("lb://TRANSFER-SERVICE"))
-                .route("front-service-route", r -> r
-                        .path("/**")
-                        .uri("lb://FRONT-SERVICE"))
                 .build();
     }
 }

@@ -29,13 +29,12 @@ public class TransferController {
             @RequestBody @Valid TransferRequest request,
             Authentication authentication
     ) {
-        AuthorizationUtils.checkAuthorization(
-                request.senderLogin(),
-                authentication,
-                "You can only transfer money from your own account"
-        );
         log.info("Received transfer request from {} to {} amount {}",
                 request.senderLogin(), request.recipientLogin(), request.amount());
-        return transferService.transfer(request);
+        return AuthorizationUtils.checkAuthorizationReactive(
+                        request.senderLogin(),
+                        authentication,
+                        "You can only transfer money from your own account")
+                .then(transferService.transfer(request));
     }
 }

@@ -40,13 +40,13 @@ public class CashService {
                 : "/api/accounts/{login}/deposit";
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
-                        .scheme("http")
+                        .scheme("lb")
                         .host(accountsServiceHost)
                         .path(endpoint)
                         .queryParam("amount", operation.value())
                         .build(login))
                 .retrieve()
-                .bodyToMono(Integer.class)
+                .bodyToMono(Long.class)
                 .flatMap(newBalance -> {
                     String info = operation.action() == CashAction.GET
                             ? "Снято " + operation.value() + " руб"

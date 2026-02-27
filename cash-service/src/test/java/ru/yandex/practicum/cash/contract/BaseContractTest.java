@@ -49,7 +49,7 @@ public abstract class BaseContractTest {
         );
         RestAssuredWebTestClient.webTestClient(authenticatedClient);
         CashResponse putResponse = new CashResponse(
-                11000,
+                11000L,
                 null,
                 "Deposit successful"
         );
@@ -60,7 +60,7 @@ public abstract class BaseContractTest {
                         return Mono.just(putResponse);
                     } else {
                         CashResponse getResponse = new CashResponse(
-                                9000,
+                                9000L,
                                 null,
                                 "Withdrawal successful"
                         );

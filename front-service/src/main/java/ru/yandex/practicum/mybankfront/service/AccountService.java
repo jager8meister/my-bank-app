@@ -49,7 +49,7 @@ public class AccountService {
                 .onErrorResume(e -> Mono.just(createErrorResponse(extractErrorMessage(e))));
     }
 
-    public Mono<Map<String, Object>> processCash(String login, int value, CashAction action, String accessToken) {
+    public Mono<Map<String, Object>> processCash(String login, long value, CashAction action, String accessToken) {
         Map<String, Object> request = new HashMap<>();
         request.put("value", value);
         request.put("action", action.toString());
@@ -78,7 +78,7 @@ public class AccountService {
                 .onErrorResume(e -> Mono.just(createErrorResponse(extractErrorMessage(e))));
     }
 
-    public Mono<Map<String, Object>> transfer(String login, int value, String toLogin, String accessToken) {
+    public Mono<Map<String, Object>> transfer(String login, long value, String toLogin, String accessToken) {
         Map<String, Object> request = new HashMap<>();
         request.put("senderLogin", login);
         request.put("recipientLogin", toLogin);

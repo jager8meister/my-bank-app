@@ -66,7 +66,7 @@ public class MainController {
             Model model,
             Authentication authentication,
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient authorizedClient,
-            @RequestParam("value") @Positive(message = "Value must be positive") int value,
+            @RequestParam("value") @Positive(message = "Value must be positive") long value,
             @RequestParam("action") @NotNull(message = "Action is required") CashAction action
     ) {
         String login = authentication.getName();
@@ -81,7 +81,7 @@ public class MainController {
             Model model,
             Authentication authentication,
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient authorizedClient,
-            @RequestParam("value") @Positive(message = "Value must be positive") int value,
+            @RequestParam("value") @Positive(message = "Value must be positive") long value,
             @RequestParam("login") @NotBlank(message = "Recipient login is required") String toLogin
     ) {
         String fromLogin = authentication.getName();

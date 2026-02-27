@@ -25,7 +25,7 @@ public class TransferService {
 
     private final WebClient webClient;
     private final NotificationClient notificationClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
@@ -41,7 +41,7 @@ public class TransferService {
         }
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
-                        .scheme("http")
+                        .scheme("lb")
                         .host(accountsServiceHost)
                         .path("/api/accounts/internal/transfer")
                         .queryParam("from", request.senderLogin())
@@ -103,5 +103,5 @@ public class TransferService {
         return "Transfer failed: " + e.getMessage();
     }
 
-    record TransferResult(Integer senderBalance, Integer recipientBalance, String senderName, String recipientName) {}
+    record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {}
 }

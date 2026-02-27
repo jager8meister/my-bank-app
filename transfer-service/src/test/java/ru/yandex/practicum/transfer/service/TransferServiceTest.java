@@ -1,5 +1,6 @@
 package ru.yandex.practicum.transfer.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,7 @@ import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
 import ru.yandex.practicum.transfer.exception.InvalidTransferException;
 import ru.yandex.practicum.transfer.exception.TransferException;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TransferService Unit Tests")
@@ -27,15 +28,19 @@ class TransferServiceTest {
 
     @Mock
     private NotificationClient notificationClient;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
     private TransferService transferService;
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, notificationClient);
+        transferService = new TransferService(webClient, notificationClient, objectMapper);
     }
     @Test
     @DisplayName("Should reject transfer with negative amount")
     void shouldRejectNegativeAmount() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", -100);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", -100L);
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .expectError(InvalidTransferException.class)
@@ -45,7 +50,7 @@ class TransferServiceTest {
     }
     @Test
     void shouldRejectZeroAmount() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 0);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 0L);
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .expectError(InvalidTransferException.class)
@@ -63,7 +68,7 @@ class TransferServiceTest {
     }
     @Test
     void shouldRejectTransferToSelf() {
-        TransferRequest request = new TransferRequest("ivanov", "ivanov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "ivanov", 500L);
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .expectError(InvalidTransferException.class)
@@ -73,7 +78,7 @@ class TransferServiceTest {
     }
     @Test
     void shouldCallWebClientForValidTransfer() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -92,7 +97,7 @@ class TransferServiceTest {
     }
     @Test
     void shouldHandleWebClientError() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -108,7 +113,7 @@ class TransferServiceTest {
     }
     @Test
     void shouldHandleInsufficientFundsError() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -124,9 +129,9 @@ class TransferServiceTest {
     }
     @Test
     void shouldTransferSuccessfullyAndSendNotifications() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500, 1500, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -142,8 +147,8 @@ class TransferServiceTest {
                 .assertNext(response -> {
                     assertThat(response.success()).isTrue();
                     assertThat(response.message()).isEqualTo("Transfer successful");
-                    assertThat(response.senderBalance()).isEqualTo(4500);
-                    assertThat(response.recipientBalance()).isEqualTo(1500);
+                    assertThat(response.senderBalance()).isEqualTo(4500L);
+                    assertThat(response.recipientBalance()).isEqualTo(1500L);
                 })
                 .verifyComplete();
         verify(notificationClient, times(2)).sendTransferNotification(anyString(), anyString(), anyString());
@@ -152,9 +157,9 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should continue when sender notification fails")
     void shouldContinueWhenSenderNotificationFails() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500, 1500, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -170,8 +175,8 @@ class TransferServiceTest {
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
                     assertThat(response.success()).isTrue();
-                    assertThat(response.senderBalance()).isEqualTo(4500);
-                    assertThat(response.recipientBalance()).isEqualTo(1500);
+                    assertThat(response.senderBalance()).isEqualTo(4500L);
+                    assertThat(response.recipientBalance()).isEqualTo(1500L);
                 })
                 .verifyComplete();
         verify(notificationClient, times(2)).sendTransferNotification(anyString(), anyString(), anyString());
@@ -180,9 +185,9 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should continue when all notifications fail")
     void shouldContinueWhenAllNotificationsFail() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500, 1500, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -204,9 +209,9 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should transfer large amount successfully")
     void shouldTransferLargeAmountSuccessfully() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 1000000);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 1000000L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(0, 1001000, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(0L, 1001000L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -221,8 +226,8 @@ class TransferServiceTest {
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
                     assertThat(response.success()).isTrue();
-                    assertThat(response.senderBalance()).isEqualTo(0);
-                    assertThat(response.recipientBalance()).isEqualTo(1001000);
+                    assertThat(response.senderBalance()).isEqualTo(0L);
+                    assertThat(response.recipientBalance()).isEqualTo(1001000L);
                 })
                 .verifyComplete();
     }
@@ -230,9 +235,9 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should transfer minimum amount successfully")
     void shouldTransferMinimumAmountSuccessfully() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 1);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 1L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4999, 1001, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(4999L, 1001L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -247,7 +252,7 @@ class TransferServiceTest {
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
                     assertThat(response.success()).isTrue();
-                    assertThat(response.senderBalance()).isEqualTo(4999);
+                    assertThat(response.senderBalance()).isEqualTo(4999L);
                 })
                 .verifyComplete();
     }
@@ -255,7 +260,7 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should handle error with account not found message")
     void shouldHandleAccountNotFoundError() {
-        TransferRequest request = new TransferRequest("unknown", "petrov", 500);
+        TransferRequest request = new TransferRequest("unknown", "petrov", 500L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -273,7 +278,7 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should handle null error message")
     void shouldHandleNullErrorMessage() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -291,7 +296,7 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should handle case insensitive insufficient funds error")
     void shouldHandleCaseInsensitiveInsufficientFundsError() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
@@ -309,9 +314,9 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should verify correct notification messages")
     void shouldVerifyCorrectNotificationMessages() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500);
+        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500, 1500, "Иван Иванов", "Петр Петров");
+                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
         WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);

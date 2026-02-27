@@ -19,9 +19,10 @@ import ru.yandex.practicum.accounts.util.SecurityTestUtils;
 import java.time.LocalDate;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+
 @WebFluxTest(controllers = AccountController.class,
     properties = {
         "spring.cloud.config.enabled=false",
@@ -51,7 +52,7 @@ public abstract class BaseContractTest {
         AccountResponse mockResponse = new AccountResponse(
                 "Ivan Ivanov",
                 LocalDate.of(1990, 1, 1),
-                10000,
+                10000L,
                 List.of(),
                 null,
                 null
@@ -61,20 +62,20 @@ public abstract class BaseContractTest {
         when(accountService.updateAccount(anyString(), any(UpdateAccountRequest.class)))
                 .thenReturn(Mono.just(mockResponse));
         when(accountService.getBalance(anyString()))
-                .thenReturn(Mono.just(10000));
-        when(accountService.depositCash(anyString(), anyInt()))
-                .thenReturn(Mono.just(11000));
-        when(accountService.withdrawCash(anyString(), anyInt()))
-                .thenReturn(Mono.just(9000));
-        when(accountService.updateBalance(anyString(), anyInt()))
+                .thenReturn(Mono.just(10000L));
+        when(accountService.depositCash(anyString(), anyLong()))
+                .thenReturn(Mono.just(11000L));
+        when(accountService.withdrawCash(anyString(), anyLong()))
+                .thenReturn(Mono.just(9000L));
+        when(accountService.updateBalance(anyString(), anyLong()))
                 .thenReturn(Mono.empty());
         AccountService.TransferResult transferResult = new AccountService.TransferResult(
-                9500,
-                10500,
+                9500L,
+                10500L,
                 "Ivan Ivanov",
                 "Petr Petrov"
         );
-        when(accountService.transferMoney(anyString(), anyString(), anyInt()))
+        when(accountService.transferMoney(anyString(), anyString(), anyLong()))
                 .thenReturn(Mono.just(transferResult));
     }
 }

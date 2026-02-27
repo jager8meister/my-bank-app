@@ -11,6 +11,6 @@ public record TransferRequest(
         String recipientLogin,
         @NotNull(message = "Amount is required")
         @Positive(message = "Amount must be positive")
-        Integer amount
+        Long amount
 ) {
 }
