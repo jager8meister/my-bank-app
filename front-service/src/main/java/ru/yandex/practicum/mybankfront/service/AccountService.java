@@ -46,7 +46,12 @@ public class AccountService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(map -> (Map<String, Object>) map)
-                .onErrorResume(e -> Mono.just(createErrorResponse(extractErrorMessage(e))));
+                .onErrorResume(e -> getAccountInfo(login, accessToken)
+                        .map(accountInfo -> {
+                            accountInfo.put("errors", List.of(extractErrorMessage(e)));
+                            return accountInfo;
+                        })
+                        .onErrorResume(fallback -> Mono.just(createErrorResponse(extractErrorMessage(e)))));
     }
 
     public Mono<Map<String, Object>> processCash(String login, long value, CashAction action, String accessToken) {
@@ -75,7 +80,12 @@ public class AccountService {
                     }
                     return getAccountInfo(login, accessToken);
                 })
-                .onErrorResume(e -> Mono.just(createErrorResponse(extractErrorMessage(e))));
+                .onErrorResume(e -> getAccountInfo(login, accessToken)
+                        .map(accountInfo -> {
+                            accountInfo.put("errors", List.of(extractErrorMessage(e)));
+                            return accountInfo;
+                        })
+                        .onErrorResume(fallback -> Mono.just(createErrorResponse(extractErrorMessage(e)))));
     }
 
     public Mono<Map<String, Object>> transfer(String login, long value, String toLogin, String accessToken) {
@@ -96,7 +106,7 @@ public class AccountService {
                     return getAccountInfo(login, accessToken)
                             .map(accountInfo -> {
                                 if (success != null && success) {
-                                    accountInfo.put("info", message);
+                                    accountInfo.put("info", "Перевод выполнен успешно. Сумма: " + value + " руб");
                                 } else {
                                     accountInfo.put("errors", List.of(message));
                                 }
@@ -138,7 +148,7 @@ public class AccountService {
                 // Если не удалось распарсить JSON, возвращаем исходное сообщение
             }
         }
-        return "Ошибка перевода: " + e.getMessage();
+        return "Ошибка: " + e.getMessage();
     }
 
     private Map<String, Object> createErrorResponse(String errorMessage) {

@@ -15,13 +15,18 @@ import ru.yandex.practicum.mybankfront.service.AccountService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 @WebMvcTest(controllers = MainController.class)
 @Import(TestSecurityConfig.class)
 class MainControllerTest {
@@ -78,7 +83,7 @@ class MainControllerTest {
                 "sum", 5500,
                 "accounts", List.of()
         );
-        when(accountService.processCash(anyString(), anyInt(), any(CashAction.class), anyString()))
+        when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
                         .with(csrf())
@@ -86,7 +91,7 @@ class MainControllerTest {
                         .param("value", "500")
                         .param("action", "PUT"))
                 .andExpect(request().asyncStarted());
-        verify(accountService).processCash(eq("ivanov"), eq(500), eq(CashAction.PUT), anyString());
+        verify(accountService).processCash(eq("ivanov"), eq(500L), eq(CashAction.PUT), anyString());
     }
     @Test
     @WithMockUser(username = "ivanov")
@@ -96,7 +101,7 @@ class MainControllerTest {
                 "sum", 4500,
                 "accounts", List.of()
         );
-        when(accountService.processCash(anyString(), anyInt(), any(CashAction.class), anyString()))
+        when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
                         .with(csrf())
@@ -104,7 +109,7 @@ class MainControllerTest {
                         .param("value", "500")
                         .param("action", "GET"))
                 .andExpect(request().asyncStarted());
-        verify(accountService).processCash(eq("ivanov"), eq(500), eq(CashAction.GET), anyString());
+        verify(accountService).processCash(eq("ivanov"), eq(500L), eq(CashAction.GET), anyString());
     }
     @Test
     @WithMockUser(username = "ivanov")
@@ -114,7 +119,7 @@ class MainControllerTest {
                 "sum", 4900,
                 "accounts", List.of("petrov", "sidorov")
         );
-        when(accountService.transfer(anyString(), anyInt(), anyString(), anyString()))
+        when(accountService.transfer(anyString(), anyLong(), anyString(), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/transfer")
                         .with(csrf())
@@ -122,7 +127,7 @@ class MainControllerTest {
                         .param("value", "100")
                         .param("login", "petrov"))
                 .andExpect(request().asyncStarted());
-        verify(accountService).transfer(eq("ivanov"), eq(100), eq("petrov"), anyString());
+        verify(accountService).transfer(eq("ivanov"), eq(100L), eq("petrov"), anyString());
     }
     @Test
     void shouldRequireAuthenticationForAccount() throws Exception {

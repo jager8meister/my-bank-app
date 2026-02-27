@@ -1,9 +1,11 @@
 package ru.yandex.practicum.mybankfront.controller;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -51,7 +53,7 @@ public class MainController {
             Model model,
             Authentication authentication,
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient authorizedClient,
-            @RequestParam("name") @NotBlank(message = "Name is required") String name,
+            @RequestParam("name") @NotBlank(message = "Имя не должно быть пустым") @Size(max = 100, message = "Имя не должно превышать 100 символов") String name,
             @RequestParam("birthdate") @NotNull(message = "Birthdate is required") @Past(message = "Birthdate must be in the past") LocalDate birthdate
     ) {
         String login = authentication.getName();
@@ -66,7 +68,7 @@ public class MainController {
             Model model,
             Authentication authentication,
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient authorizedClient,
-            @RequestParam("value") @Positive(message = "Value must be positive") long value,
+            @RequestParam("value") @Positive(message = "Сумма должна быть положительной") @Max(value = 1_000_000_000L, message = "Сумма не может превышать 1 000 000 000 руб") long value,
             @RequestParam("action") @NotNull(message = "Action is required") CashAction action
     ) {
         String login = authentication.getName();
@@ -81,8 +83,8 @@ public class MainController {
             Model model,
             Authentication authentication,
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient authorizedClient,
-            @RequestParam("value") @Positive(message = "Value must be positive") long value,
-            @RequestParam("login") @NotBlank(message = "Recipient login is required") String toLogin
+            @RequestParam("value") @Positive(message = "Сумма должна быть положительной") @Max(value = 1_000_000_000L, message = "Сумма не может превышать 1 000 000 000 руб") long value,
+            @RequestParam("login") @NotBlank(message = "Получатель не указан") @Size(max = 20, message = "Логин получателя не должен превышать 20 символов") String toLogin
     ) {
         String fromLogin = authentication.getName();
         String accessToken = authorizedClient.getAccessToken().getTokenValue();

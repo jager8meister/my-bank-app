@@ -116,6 +116,9 @@ class AccountServiceTest {
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Map.class))
                 .thenReturn(Mono.error(new RuntimeException("Update failed")));
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.headers(any())).thenReturn(requestHeadersSpec);
         Mono<Map<String, Object>> result = accountService.updateAccount(
                 "ivanov",
                 "New Name",
@@ -170,6 +173,9 @@ class AccountServiceTest {
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Map.class))
                 .thenReturn(Mono.error(new RuntimeException("Cash service error")));
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.headers(any())).thenReturn(requestHeadersSpec);
         Mono<Map<String, Object>> result = accountService.processCash("ivanov", 500, CashAction.PUT, "test-token");
         StepVerifier.create(result)
                 .assertNext(response -> {

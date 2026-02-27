@@ -1,9 +1,11 @@
 package ru.yandex.practicum.accounts.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +36,7 @@ public class AccountController {
 
     @GetMapping("/{login}")
     public Mono<AccountResponse> getAccount(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             Authentication authentication
     ) {
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
@@ -43,7 +45,7 @@ public class AccountController {
 
     @PutMapping("/{login}")
     public Mono<AccountResponse> updateAccount(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             @RequestBody @Valid UpdateAccountRequest request,
             Authentication authentication
     ) {
@@ -53,7 +55,7 @@ public class AccountController {
 
     @PutMapping("/{login}/balance")
     public Mono<Void> updateBalance(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             @RequestParam
             @NotNull(message = "Balance is required")
             @Positive(message = "Balance must be positive")
@@ -66,7 +68,7 @@ public class AccountController {
 
     @GetMapping("/{login}/balance")
     public Mono<Long> getBalance(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             Authentication authentication
     ) {
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
@@ -75,10 +77,11 @@ public class AccountController {
 
     @PostMapping("/{login}/deposit")
     public Mono<Long> depositCash(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
+            @Max(value = 1_000_000_000L, message = "Amount must not exceed 1000000000")
             Long amount,
             Authentication authentication
     ) {
@@ -88,10 +91,11 @@ public class AccountController {
 
     @PostMapping("/{login}/withdraw")
     public Mono<Long> withdrawCash(
-            @PathVariable @NotBlank(message = "Login is required") String login,
+            @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
+            @Max(value = 1_000_000_000L, message = "Amount must not exceed 1000000000")
             Long amount,
             Authentication authentication
     ) {
@@ -110,11 +114,12 @@ public class AccountController {
      */
     @PostMapping("/internal/transfer")
     public Mono<AccountService.TransferResult> internalTransfer(
-            @RequestParam @NotBlank(message = "Sender login is required") String from,
-            @RequestParam @NotBlank(message = "Recipient login is required") String to,
+            @RequestParam @NotBlank(message = "Sender login is required") @Size(max = 20) String from,
+            @RequestParam @NotBlank(message = "Recipient login is required") @Size(max = 20) String to,
             @RequestParam
             @NotNull(message = "Amount is required")
             @Positive(message = "Amount must be positive")
+            @Max(value = 1_000_000_000L, message = "Amount must not exceed 1000000000")
             Long amount,
             Authentication authentication
     ) {

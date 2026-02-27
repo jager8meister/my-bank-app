@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,6 +72,21 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(createErrorResponse("Validation failed: " + errors, HttpStatus.BAD_REQUEST)));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleResponseStatusException(ResponseStatusException ex) {
+        log.warn("Request error ({}): {}", ex.getStatusCode(), ex.getMessage());
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        if (status.is4xxClientError()) {
+            String message = ex.getReason() != null ? ex.getReason() : "Invalid request";
+            return Mono.just(ResponseEntity
+                    .status(status)
+                    .body(createErrorResponse(message, status)));
+        }
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(createErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR)));
     }
 
     @ExceptionHandler(Exception.class)

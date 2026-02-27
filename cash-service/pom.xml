@@ -96,7 +96,7 @@
             <plugin>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-contract-maven-plugin</artifactId>
-                <version>4.2.0</version>
+                <version>${spring-cloud-contract.version}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <testFramework>JUNIT5</testFramework>

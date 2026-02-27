@@ -26,6 +26,7 @@
         <resilience4j.version>2.2.0</resilience4j.version>
         <jacoco.version>0.8.12</jacoco.version>
         <jacoco.coverage.minimum>0.85</jacoco.coverage.minimum>
+        <spring-cloud-contract.version>4.2.0</spring-cloud-contract.version>
     </properties>
 
     <modules>

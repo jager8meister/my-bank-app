@@ -36,6 +36,33 @@ public class RegistrationController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate birthdate,
             Model model
     ) {
+        if (login == null || login.length() < 3 || login.length() > 20) {
+            model.addAttribute("error", "Логин должен быть от 3 до 20 символов");
+            model.addAttribute("login", login);
+            model.addAttribute("name", name);
+            return Mono.just("register");
+        }
+
+        if (!login.matches("[a-z0-9_\\-]+")) {
+            model.addAttribute("error", "Логин может содержать только строчные буквы, цифры, _ или -");
+            model.addAttribute("login", login);
+            model.addAttribute("name", name);
+            return Mono.just("register");
+        }
+
+        if (name == null || name.isBlank()) {
+            model.addAttribute("error", "Имя не должно быть пустым");
+            model.addAttribute("login", login);
+            return Mono.just("register");
+        }
+
+        if (name.length() > 100) {
+            model.addAttribute("error", "Имя не должно превышать 100 символов");
+            model.addAttribute("login", login);
+            model.addAttribute("name", name);
+            return Mono.just("register");
+        }
+
         if (!password.equals(confirmPassword)) {
             model.addAttribute("error", "Пароли не совпадают");
             model.addAttribute("login", login);
@@ -45,6 +72,13 @@ public class RegistrationController {
 
         if (password.length() < 6) {
             model.addAttribute("error", "Пароль должен содержать не менее 6 символов");
+            model.addAttribute("login", login);
+            model.addAttribute("name", name);
+            return Mono.just("register");
+        }
+
+        if (password.length() > 100) {
+            model.addAttribute("error", "Пароль не должен превышать 100 символов");
             model.addAttribute("login", login);
             model.addAttribute("name", name);
             return Mono.just("register");
