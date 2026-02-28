@@ -1,60 +1,98 @@
 # My Bank App
 
-## Архитектура
+Микросервисное банковское приложение на Spring Boot. Пользователь может редактировать данные аккаунта, пополнять и снимать деньги, переводить деньги другим пользователям.
+
+## Сервисы
+
+| Сервис | Порт | Описание |
+|---|---|---|
+| front-service | 8084 | Web UI (Thymeleaf). Единственная точка входа для браузера |
+| gateway-service | 8080 | API Gateway. Принимает запросы от front-service, проверяет JWT, маршрутизирует в сервисы |
+| accounts-service | 8081 | Хранит аккаунты и балансы. Отправляет уведомления |
+| cash-service | 8082 | Пополнение и снятие наличных |
+| transfer-service | 8085 | Переводы между счетами |
+| notifications-service | 8086 | Принимает уведомления от accounts-service и логирует их |
+| auth-service | 8083 | Хранит пользователей, инициализирует тестовые данные |
+| config-server | 8888 | Централизованная конфигурация (Spring Cloud Config) |
+| eureka-server | 8761 | Service Discovery (Spring Cloud Netflix Eureka) |
+| keycloak | 9090 | OAuth2/OIDC сервер, realm: `bank-realm` |
+| postgres | 5432 | PostgreSQL, единая БД с отдельными схемами на каждый сервис |
+
+## Как всё работает
+
+### Страница аккаунта
+
+Браузер открывает `http://localhost:8084`. Если пользователь не авторизован — front-service перенаправляет на страницу входа Keycloak (Authorization Code Flow). После входа открывается страница с тремя блоками:
+- **Данные аккаунта** — имя, дата рождения, текущий баланс, кнопка сохранить
+- **Наличные** — ввести сумму и нажать «Положить» или «Снять»
+- **Перевод** — выбрать получателя из списка, ввести сумму, нажать «Перевести»
+
+Все действия на странице отправляются из front-service в gateway-service с Bearer JWT токеном пользователя. Gateway проверяет токен и передаёт запрос в нужный сервис:
 
 ```
-Browser / curl
-     │
-     ▼
-front-service :8084  (UI, OAuth2 login через front-client)
-     │
-     ▼
-gateway-service :8080  (API Gateway, JWT validation, oauth2Login)
-     ├──▶ accounts-service :8081  (счета, балансы, R2DBC + PostgreSQL)
-     ├──▶ cash-service :8082      (пополнение / снятие наличных)
-     ├──▶ transfer-service :8085  (переводы между счетами)
-     └──▶ notifications-service :8086 (уведомления об операциях)
-
-auth-service :8083       (хранение пользователей, R2DBC + PostgreSQL)
-config-server :8888      (Spring Cloud Config — общие properties)
-eureka-server :8761      (Spring Cloud Eureka — service discovery)
-keycloak :9090           (OAuth2 / OIDC сервер, realm: bank-realm)
-postgres :5432           (единая БД, отдельные схемы на каждый сервис)
+Браузер
+  └─▶ front-service :8084
+        └─▶ gateway-service :8080
+              ├─▶ accounts-service :8081  (/api/accounts/**)
+              ├─▶ cash-service :8082      (/api/cash/**)
+              └─▶ transfer-service :8085  (/api/transfer/**)
 ```
 
-## Стек технологий
+Межсервисные вызовы идут напрямую через Eureka, минуя gateway:
 
-| Категория | Технологии |
+```
+cash-service     ─▶ accounts-service   (пополнить / снять баланс)
+transfer-service ─▶ accounts-service   (списать у отправителя, зачислить получателю)
+accounts-service ─▶ notifications-service  (отправить уведомление об операции)
+```
+
+### Регистрация
+
+Страница `http://localhost:8084/register` доступна без авторизации. front-service:
+
+1. Проверяет входные данные (логин 3–20 символов, строчные буквы/цифры/`_`/`-`; имя не пустое до 100 символов; пароль 6–100 символов; возраст ≥ 18 лет; пароли совпадают)
+2. Создаёт пользователя в Keycloak через Admin API и назначает роли
+3. Создаёт запись аккаунта в accounts-service через `POST /api/accounts/register`
+4. Если шаг 3 упал — откатывает создание пользователя в Keycloak
+
+### Уведомления
+
+accounts-service при каждой операции (пополнение, снятие, перевод) сохраняет событие в таблицу `outbox_events` в рамках той же транзакции. Фоновая задача каждые 5 секунд забирает необработанные события и отправляет в notifications-service, который их логирует. Получатель перевода видит уведомление при открытии страницы — в течение 5 минут после операции.
+
+### auth-service
+
+Содержит собственную таблицу пользователей. При первом старте создаёт тестовых пользователей `ivanov`, `petrov`, `sidorov`. В основном потоке аутентификации не участвует — Keycloak управляет пользователями самостоятельно.
+
+## Стек
+
+| | |
 |---|---|
 | Язык | Java 21 |
-| Фреймворк | Spring Boot 3, Spring WebFlux (реактивный) |
-| Безопасность | Spring Security OAuth2, Keycloak 23, JWT |
-| БД | PostgreSQL 16, R2DBC (реактивный драйвер) |
-| Инфраструктура | Spring Cloud (Config, Eureka, Gateway) |
-| Отказоустойчивость | Resilience4j (Circuit Breaker, Retry, TimeLimiter) |
+| Фреймворк | Spring Boot 3, Spring WebFlux |
+| Безопасность | Spring Security OAuth2, Keycloak, JWT |
+| БД | PostgreSQL 16, Spring Data R2DBC |
+| Инфраструктура | Spring Cloud Config, Eureka, Gateway |
+| Тесты | JUnit 5, Mockito, Testcontainers, Spring Cloud Contract |
 | Сборка | Maven (multi-module) |
 | Деплой | Docker Compose |
 
-## Быстрый старт
+## Запуск в Docker
 
-### Требования
-- Docker и Docker Compose
-- Файл `.env` в корне проекта (см. раздел Конфигурация)
-
-### Запуск
+**Требования:** Docker Desktop 24+
 
 ```bash
+cp .env.example .env
 docker compose build
 docker compose up -d
 ```
 
-Дождаться пока все контейнеры перейдут в статус `healthy`:
+Дождаться пока все 11 контейнеров перейдут в статус `healthy`:
 
 ```bash
 docker compose ps
 ```
 
-Приложение доступно на **http://localhost:8084**
+Приложение: **http://localhost:8084**
 
 ### Тестовые пользователи
 
@@ -64,12 +102,72 @@ docker compose ps
 | petrov | password |
 | sidorov | password |
 
+## Запуск локально из исходников
+
+**Требования:** JDK 21, Maven 3.8+, Docker (для инфраструктуры)
+
+### 1. Запустить инфраструктуру
+
+```bash
+docker compose up -d postgres keycloak config-server eureka-server
+```
+
+Дождаться `healthy`:
+
+```bash
+docker compose ps postgres keycloak config-server eureka-server
+```
+
+### 2. Собрать проект
+
+```bash
+mvn clean package -DskipTests
+```
+
+### 3. Запустить сервисы
+
+Запускать в отдельных терминалах в следующем порядке:
+
+```bash
+java -jar gateway-service/target/gateway-service-*.jar
+java -jar auth-service/target/auth-service-*.jar
+java -jar accounts-service/target/accounts-service-*.jar
+java -jar cash-service/target/cash-service-*.jar
+java -jar transfer-service/target/transfer-service-*.jar
+java -jar notifications-service/target/notifications-service-*.jar
+java -jar front-service/target/front-service-*.jar
+```
+
+Приложение: **http://localhost:8084**
+
+### Запуск в IntelliJ IDEA
+
+1. `File → Open` — выбрать корневой `pom.xml`, открыть как проект
+2. `docker compose up -d postgres keycloak config-server eureka-server`
+3. Запустить каждый `*Application.java` через Run в порядке из шага 3
+4. Открыть **http://localhost:8084**
+
+## Тесты
+
+```bash
+# Все сервисы
+mvn test
+
+# Один сервис
+mvn test -pl accounts-service
+```
+
+Каждый сервис покрыт:
+- **Юнит-тестами** — сервисный слой с Mockito
+- **Интеграционными тестами** — `@SpringBootTest` + Testcontainers
+- **Контрактными тестами** — Spring Cloud Contract (Groovy DSL)
+
 ## Конфигурация
 
-Все параметры задаются через `.env` в корне проекта:
+Параметры задаются через `.env` в корне проекта. Пример — `.env.example`:
 
 ```env
-# База данных
+# PostgreSQL
 POSTGRES_DB=bankdb
 POSTGRES_USER=bankuser
 POSTGRES_PASSWORD=bankpass
@@ -80,14 +178,15 @@ DB_PASSWORD=bankpass
 KEYCLOAK_PORT=9090
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=admin
+KEYCLOAK_REALM=bank-realm
+KEYCLOAK_HOSTNAME=localhost
 KEYCLOAK_EXTERNAL_URL=http://localhost:9090
 KEYCLOAK_INTERNAL_URL=http://keycloak:9090
-KEYCLOAK_REALM=bank-realm
 
-# OAuth2 клиенты
-MICROSERVICES_CLIENT_SECRET=...
-FRONT_CLIENT_SECRET=...
-GATEWAY_CLIENT_SECRET=...
+# OAuth2 секреты (должны совпадать с keycloak/realm-export.json)
+MICROSERVICES_CLIENT_SECRET=microservices-secret-key-12345
+FRONT_CLIENT_SECRET=front-client-secret-key-67890
+GATEWAY_CLIENT_SECRET=gateway-client-secret-key-11111
 
 # Порты сервисов
 CONFIG_SERVER_PORT=8888
@@ -103,83 +202,61 @@ NOTIFICATIONS_SERVICE_PORT=8086
 
 ## API
 
-Все запросы через Gateway `:8080`. Требуется Bearer-токен:
+Все запросы через Gateway `:8080` с Bearer JWT токеном.
 
 ```bash
 # Получить токен
 TOKEN=$(curl -s -X POST "http://localhost:9090/realms/bank-realm/protocol/openid-connect/token" \
-  -d "grant_type=password&client_id=front-client&client_secret=<secret>&username=ivanov&password=password" \
+  -d "grant_type=password&client_id=front-client&client_secret=front-client-secret-key-67890&username=ivanov&password=password" \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 ```
 
-### Счета
+### Аккаунты
 
-```bash
-# Получить информацию о счёте
+```
 GET /api/accounts/{login}
+  → данные аккаунта: имя, дата рождения, баланс, список других пользователей
 
-# Обновить имя и дату рождения
 PUT /api/accounts/{login}
-{"name": "Иванов Иван", "birthdate": "1990-06-15"}
+  Body: {"name": "Иванов Иван", "birthdate": "1990-06-15"}
+  → обновить имя и дату рождения
+
+POST /api/accounts/register
+  Body: {"login": "newuser", "name": "Имя", "birthdate": "1995-01-01"}
+  → создать аккаунт (вызывается front-service при регистрации, без токена)
 ```
 
 ### Наличные
 
-```bash
-# Пополнение или снятие
+```
 POST /api/cash/{login}
-{"value": 1000, "action": "PUT"}   # пополнение
-{"value": 500,  "action": "GET"}   # снятие
+  Body: {"value": 1000, "action": "PUT"}   → пополнение
+        {"value": 500,  "action": "GET"}   → снятие
 ```
 
 ### Переводы
 
-```bash
+```
 POST /api/transfer
-{"senderLogin": "ivanov", "recipientLogin": "petrov", "amount": 300}
-```
-
-## Разработка
-
-### Запуск тестов
-
-```bash
-# Все сервисы
-mvn test
-
-# Конкретный сервис
-mvn test -pl accounts-service
-```
-
-### Пересборка сервиса
-
-```bash
-docker compose build accounts-service
-docker compose up -d accounts-service
-```
-
-### Логи
-
-```bash
-docker compose logs -f accounts-service
-docker compose logs --since=10m gateway-service | grep ERROR
+  Body: {"senderLogin": "ivanov", "recipientLogin": "petrov", "amount": 300}
 ```
 
 ## Структура проекта
 
 ```
 my-bank-app/
-├── accounts-service/       # Управление счетами и балансами
-├── auth-service/           # Пользователи и аутентификация
-├── cash-service/           # Операции с наличными
+├── accounts-service/       # Аккаунты и балансы
+├── auth-service/           # Хранение пользователей, инициализация тестовых данных
+├── cash-service/           # Пополнение и снятие
 ├── transfer-service/       # Переводы между счетами
-├── notifications-service/  # Уведомления об операциях
+├── notifications-service/  # Логирование уведомлений
 ├── gateway-service/        # API Gateway
-├── front-service/          # Web UI (Thymeleaf)
+├── front-service/          # Web UI
 ├── config-server/          # Централизованная конфигурация
 ├── eureka-server/          # Service Discovery
-├── keycloak/               # Realm export и темы
+├── keycloak/               # Realm export
 ├── database/               # Скрипты инициализации БД
 ├── docker-compose.yml
-└── .env
+├── .env.example
+└── pom.xml
 ```
