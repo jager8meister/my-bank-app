@@ -32,7 +32,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
     private NotificationClient notificationClient;
     @BeforeEach
     void setUp() {
-        when(notificationClient.sendAccountUpdatedNotification(anyString(), anyString()))
+        when(notificationClient.sendNotification(anyString(), anyString(), anyString()))
                 .thenReturn(Mono.empty());
     }
     @Test

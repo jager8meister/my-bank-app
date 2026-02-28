@@ -10,7 +10,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import ru.yandex.practicum.accounts.client.NotificationClient;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
 import ru.yandex.practicum.accounts.exception.AccountNotFoundException;
@@ -18,13 +17,16 @@ import ru.yandex.practicum.accounts.exception.InsufficientFundsException;
 import ru.yandex.practicum.accounts.exception.InvalidAmountException;
 import ru.yandex.practicum.accounts.exception.InvalidTransferException;
 import ru.yandex.practicum.accounts.model.Account;
+import ru.yandex.practicum.accounts.model.OutboxEvent;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
+import ru.yandex.practicum.accounts.repository.OutboxEventRepository;
 import ru.yandex.practicum.accounts.util.TestDataFactory;
 import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,7 +40,7 @@ class AccountServiceTest {
     private AccountRepository accountRepository;
 
     @Mock
-    private NotificationClient notificationClient;
+    private OutboxEventRepository outboxEventRepository;
 
     @InjectMocks
     private AccountService accountService;
@@ -49,13 +51,15 @@ class AccountServiceTest {
     void setUp() {
         testAccount = TestDataFactory.createIvanovAccount();
         testAccount.setId(1L);
+        lenient().when(outboxEventRepository.save(any(OutboxEvent.class)))
+                .thenReturn(Mono.just(new OutboxEvent()));
+        lenient().when(outboxEventRepository.findRecentTransferReceivedByRecipient(anyString()))
+                .thenReturn(Mono.empty());
     }
 
     @Test
     @DisplayName("Should get account info successfully")
     void shouldGetAccountInfo() {
-        Account petrov = TestDataFactory.createPetrovAccount();
-        Account sidorov = TestDataFactory.createSidorovAccount();
         when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
         when(accountRepository.findOtherAccounts("ivanov")).thenReturn(Flux.just(
                 TestDataFactory.createAccountDto("petrov", "Петр Петров"),
@@ -86,7 +90,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should update account successfully")
+    @DisplayName("Should update account successfully and write outbox event")
     void shouldUpdateAccountSuccessfully() {
         UpdateAccountRequest request = new UpdateAccountRequest(
                 "Иван Иванович Иванов",
@@ -94,8 +98,6 @@ class AccountServiceTest {
         );
         when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
         when(accountRepository.save(any(Account.class))).thenReturn(Mono.just(testAccount));
-        when(notificationClient.sendAccountUpdatedNotification(anyString(), anyString()))
-                .thenReturn(Mono.empty());
         when(accountRepository.findOtherAccounts("ivanov")).thenReturn(Flux.just(
                 TestDataFactory.createAccountDto("petrov", "Петр Петров"),
                 TestDataFactory.createAccountDto("sidorov", "Сидор Сидоров")
@@ -108,7 +110,7 @@ class AccountServiceTest {
                 .verifyComplete();
         verify(accountRepository, times(2)).findByLogin("ivanov");
         verify(accountRepository).save(any(Account.class));
-        verify(notificationClient).sendAccountUpdatedNotification(eq("ivanov"), anyString());
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -134,7 +136,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should deposit cash successfully")
+    @DisplayName("Should deposit cash successfully and write outbox event")
     void shouldDepositCashSuccessfully() {
         when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
         when(accountRepository.incrementBalance("ivanov", 500L)).thenReturn(Mono.just(1));
@@ -147,6 +149,7 @@ class AccountServiceTest {
                 .expectNext(5500L)
                 .verifyComplete();
         verify(accountRepository).incrementBalance("ivanov", 500L);
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -160,7 +163,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should withdraw cash successfully")
+    @DisplayName("Should withdraw cash successfully and write outbox event")
     void shouldWithdrawCashSuccessfully() {
         when(accountRepository.decrementBalanceIfSufficient("ivanov", 500L)).thenReturn(Mono.just(1));
         testAccount.setBalance(4500L);
@@ -172,6 +175,7 @@ class AccountServiceTest {
                 .expectNext(4500L)
                 .verifyComplete();
         verify(accountRepository).decrementBalanceIfSufficient("ivanov", 500L);
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -189,7 +193,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should transfer money successfully")
+    @DisplayName("Should transfer money successfully and write two outbox events")
     void shouldTransferMoneySuccessfully() {
         Account petrov = TestDataFactory.createPetrovAccount();
         petrov.setId(2L);
@@ -218,6 +222,7 @@ class AccountServiceTest {
                 .verifyComplete();
         verify(accountRepository).decrementBalanceIfSufficient("ivanov", 1000L);
         verify(accountRepository).incrementBalance("petrov", 1000L);
+        verify(outboxEventRepository, times(2)).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -298,7 +303,6 @@ class AccountServiceTest {
     void shouldRejectTransferWhenSenderNotFound() {
         when(accountRepository.findByLogin("unknown")).thenReturn(Mono.empty());
         when(accountRepository.findByLogin("petrov")).thenReturn(Mono.just(TestDataFactory.createPetrovAccount()));
-        // decrementBalanceIfSufficient returns 0 when account doesn't exist (no rows updated)
         when(accountRepository.decrementBalanceIfSufficient("unknown", 1000L)).thenReturn(Mono.just(0));
         Mono<AccountService.TransferResult> result = accountService.transferMoney("unknown", "petrov", 1000L);
         StepVerifier.create(result)

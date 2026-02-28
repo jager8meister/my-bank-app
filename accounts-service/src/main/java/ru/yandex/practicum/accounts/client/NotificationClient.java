@@ -17,15 +17,15 @@ public class NotificationClient {
     @Value("${services.notifications.host:notifications-service}")
     private String notificationsServiceHost;
 
-    public Mono<Void> sendAccountUpdatedNotification(String recipient, String message) {
-        log.info("Sending ACCOUNT_UPDATED notification to {}", recipient);
+    public Mono<Void> sendNotification(String recipient, String message, String type) {
+        log.info("Sending {} notification to {}", type, recipient);
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("lb")
                         .host(notificationsServiceHost)
                         .path("/api/notifications")
                         .build())
-                .bodyValue(new NotificationRequest(recipient, message, "ACCOUNT_UPDATED"))
+                .bodyValue(new NotificationRequest(recipient, message, type))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .doOnSuccess(v -> log.info("Notification sent successfully to {}", recipient))

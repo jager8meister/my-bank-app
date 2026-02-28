@@ -11,14 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
-import ru.yandex.practicum.cash.client.NotificationClient;
 import ru.yandex.practicum.cash.dto.CashAction;
 import ru.yandex.practicum.cash.dto.CashOperationRequest;
 import ru.yandex.practicum.cash.dto.CashResponse;
 import ru.yandex.practicum.cash.exception.CashOperationException;
 import ru.yandex.practicum.cash.exception.InsufficientFundsException;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +23,6 @@ import java.util.List;
 public class CashService {
 
     private final WebClient webClient;
-    private final NotificationClient notificationClient;
 
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
@@ -47,23 +43,11 @@ public class CashService {
                         .build(login))
                 .retrieve()
                 .bodyToMono(Long.class)
-                .flatMap(newBalance -> {
+                .map(newBalance -> {
                     String info = operation.action() == CashAction.GET
                             ? "Снято " + operation.value() + " руб"
                             : "Положено " + operation.value() + " руб";
-                    String notificationType = operation.action() == CashAction.GET
-                            ? "BALANCE_LOW"
-                            : "ACCOUNT_UPDATED";
-                    return notificationClient.sendCashOperationNotification(
-                            login,
-                            info + ". Новый баланс: " + newBalance + " руб",
-                            notificationType
-                    )
-                    .onErrorResume(notificationError -> {
-                        log.warn("Failed to send notification, but continuing operation", notificationError);
-                        return Mono.empty();
-                    })
-                    .then(Mono.just(new CashResponse(newBalance, null, info)));
+                    return new CashResponse(newBalance, null, info);
                 })
                 .onErrorResume(WebClientResponseException.class, error -> {
                     log.error("HTTP error from accounts-service: status={}, body={}", error.getStatusCode(), error.getResponseBodyAsString());

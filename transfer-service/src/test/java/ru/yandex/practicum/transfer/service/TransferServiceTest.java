@@ -10,7 +10,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import ru.yandex.practicum.transfer.client.NotificationClient;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
@@ -18,14 +17,11 @@ import ru.yandex.practicum.transfer.exception.InvalidTransferException;
 import ru.yandex.practicum.transfer.exception.TransferException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TransferService Unit Tests")
 class TransferServiceTest {
@@ -34,16 +30,15 @@ class TransferServiceTest {
     private WebClient webClient;
 
     @Mock
-    private NotificationClient notificationClient;
-
-    @Mock
     private ObjectMapper objectMapper;
 
     private TransferService transferService;
+
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, notificationClient, objectMapper);
+        transferService = new TransferService(webClient, objectMapper);
     }
+
     @Test
     @DisplayName("Should reject transfer with negative amount")
     void shouldRejectNegativeAmount() {
@@ -53,8 +48,8 @@ class TransferServiceTest {
                 .expectError(InvalidTransferException.class)
                 .verify();
         verify(webClient, never()).post();
-        verify(notificationClient, never()).sendTransferNotification(anyString(), anyString(), anyString());
     }
+
     @Test
     void shouldRejectZeroAmount() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 0L);
@@ -64,6 +59,7 @@ class TransferServiceTest {
                 .verify();
         verify(webClient, never()).post();
     }
+
     @Test
     void shouldRejectNullAmount() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", null);
@@ -73,6 +69,7 @@ class TransferServiceTest {
                 .verify();
         verify(webClient, never()).post();
     }
+
     @Test
     void shouldRejectTransferToSelf() {
         TransferRequest request = new TransferRequest("ivanov", "ivanov", 500L);
@@ -81,8 +78,8 @@ class TransferServiceTest {
                 .expectError(InvalidTransferException.class)
                 .verify();
         verify(webClient, never()).post();
-        verify(notificationClient, never()).sendTransferNotification(anyString(), anyString(), anyString());
     }
+
     @Test
     void shouldCallWebClientForValidTransfer() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
@@ -102,6 +99,7 @@ class TransferServiceTest {
         verify(requestBodySpec).retrieve();
         verify(responseSpec).bodyToMono(any(Class.class));
     }
+
     @Test
     void shouldHandleWebClientError() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
@@ -118,6 +116,7 @@ class TransferServiceTest {
                 .expectError(TransferException.class)
                 .verify();
     }
+
     @Test
     void shouldHandleInsufficientFundsError() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
@@ -134,8 +133,9 @@ class TransferServiceTest {
                 .expectError(InsufficientFundsException.class)
                 .verify();
     }
+
     @Test
-    void shouldTransferSuccessfullyAndSendNotifications() {
+    void shouldTransferSuccessfully() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
                 new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
@@ -147,8 +147,6 @@ class TransferServiceTest {
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(TransferService.TransferResult.class))
                 .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.empty());
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
@@ -156,59 +154,6 @@ class TransferServiceTest {
                     assertThat(response.message()).isEqualTo("Transfer successful");
                     assertThat(response.senderBalance()).isEqualTo(4500L);
                     assertThat(response.recipientBalance()).isEqualTo(1500L);
-                })
-                .verifyComplete();
-        verify(notificationClient, times(2)).sendTransferNotification(anyString(), anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("Should continue when sender notification fails")
-    void shouldContinueWhenSenderNotificationFails() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
-        TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
-        WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
-        WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-        when(webClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
-        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(TransferService.TransferResult.class))
-                .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.error(new RuntimeException("Notification service down")))
-                .thenReturn(Mono.empty());
-        Mono<TransferResponse> responseMono = transferService.transfer(request);
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertThat(response.success()).isTrue();
-                    assertThat(response.senderBalance()).isEqualTo(4500L);
-                    assertThat(response.recipientBalance()).isEqualTo(1500L);
-                })
-                .verifyComplete();
-        verify(notificationClient, times(2)).sendTransferNotification(anyString(), anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("Should continue when all notifications fail")
-    void shouldContinueWhenAllNotificationsFail() {
-        TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
-        TransferService.TransferResult transferResult =
-                new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
-        WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
-        WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-        when(webClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
-        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(TransferService.TransferResult.class))
-                .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.error(new RuntimeException("Notification service down")));
-        Mono<TransferResponse> responseMono = transferService.transfer(request);
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertThat(response.success()).isTrue();
                 })
                 .verifyComplete();
     }
@@ -227,8 +172,6 @@ class TransferServiceTest {
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(TransferService.TransferResult.class))
                 .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.empty());
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
@@ -253,8 +196,6 @@ class TransferServiceTest {
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(TransferService.TransferResult.class))
                 .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.empty());
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .assertNext(response -> {
@@ -319,8 +260,8 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("Should verify correct notification messages")
-    void shouldVerifyCorrectNotificationMessages() {
+    @DisplayName("Should return correct balances on transfer")
+    void shouldReturnCorrectBalancesOnTransfer() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
         TransferService.TransferResult transferResult =
                 new TransferService.TransferResult(4500L, 1500L, "Иван Иванов", "Петр Петров");
@@ -332,21 +273,13 @@ class TransferServiceTest {
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(TransferService.TransferResult.class))
                 .thenReturn(Mono.just(transferResult));
-        when(notificationClient.sendTransferNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.empty());
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
-                .expectNextCount(1)
+                .assertNext(response -> {
+                    assertThat(response.success()).isTrue();
+                    assertThat(response.senderBalance()).isEqualTo(4500L);
+                    assertThat(response.recipientBalance()).isEqualTo(1500L);
+                })
                 .verifyComplete();
-        verify(notificationClient).sendTransferNotification(
-                eq("ivanov"),
-                contains("500"),
-                eq("TRANSFER_SENT")
-        );
-        verify(notificationClient).sendTransferNotification(
-                eq("petrov"),
-                contains("500"),
-                eq("TRANSFER_RECEIVED")
-        );
     }
 }

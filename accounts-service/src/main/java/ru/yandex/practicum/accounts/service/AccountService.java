@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import org.springframework.dao.DataIntegrityViolationException;
-import ru.yandex.practicum.accounts.client.NotificationClient;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
 import ru.yandex.practicum.accounts.dto.CreateAccountRequest;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
@@ -15,30 +14,36 @@ import ru.yandex.practicum.accounts.exception.InsufficientFundsException;
 import ru.yandex.practicum.accounts.exception.InvalidAmountException;
 import ru.yandex.practicum.accounts.exception.InvalidTransferException;
 import ru.yandex.practicum.accounts.model.Account;
+import ru.yandex.practicum.accounts.model.OutboxEvent;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
+import ru.yandex.practicum.accounts.repository.OutboxEventRepository;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final NotificationClient notificationClient;
+    private final OutboxEventRepository outboxEventRepository;
 
     @Transactional(readOnly = true)
     public Mono<AccountResponse> getAccountInfo(String login) {
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
-                .flatMap(account -> accountRepository.findOtherAccounts(login)
-                        .collectList()
-                        .map(otherAccounts -> new AccountResponse(
-                                account.getName(),
-                                account.getBirthdate(),
-                                account.getBalance(),
-                                otherAccounts,
-                                null,
-                                null
-                        ))
-                );
+                .flatMap(account -> Mono.zip(
+                        accountRepository.findOtherAccounts(login).collectList(),
+                        outboxEventRepository.findRecentTransferReceivedByRecipient(login)
+                                .map(OutboxEvent::getMessage)
+                                .defaultIfEmpty("")
+                ).map(tuple -> new AccountResponse(
+                        account.getName(),
+                        account.getBirthdate(),
+                        account.getBalance(),
+                        tuple.getT1(),
+                        null,
+                        tuple.getT2().isEmpty() ? null : tuple.getT2()
+                )));
     }
 
     @Transactional
@@ -50,10 +55,12 @@ public class AccountService {
                     account.setBirthdate(request.birthdate());
                     return accountRepository.save(account);
                 })
-                .flatMap(savedAccount -> notificationClient.sendAccountUpdatedNotification(
-                        savedAccount.getLogin(),
-                        "Данные вашего аккаунта были обновлены: " + savedAccount.getName()
-                ).then(getAccountInfo(login)));
+                .flatMap(savedAccount -> {
+                    OutboxEvent event = new OutboxEvent(null, "ACCOUNT_UPDATED", savedAccount.getLogin(),
+                            "Данные вашего аккаунта были обновлены: " + savedAccount.getName(),
+                            LocalDateTime.now(), false, null);
+                    return outboxEventRepository.save(event).then(getAccountInfo(login));
+                });
     }
 
     @Transactional
@@ -92,6 +99,12 @@ public class AccountService {
                                 }
                                 return getBalance(login);
                             });
+                })
+                .flatMap(newBalance -> {
+                    OutboxEvent event = new OutboxEvent(null, "ACCOUNT_UPDATED", login,
+                            "Положено " + amount + " руб. Новый баланс: " + newBalance + " руб",
+                            LocalDateTime.now(), false, null);
+                    return outboxEventRepository.save(event).thenReturn(newBalance);
                 });
     }
 
@@ -108,6 +121,12 @@ public class AccountService {
                                 .flatMap(account -> Mono.error(new InsufficientFundsException(account.getBalance())));
                     }
                     return getBalance(login);
+                })
+                .flatMap(newBalance -> {
+                    OutboxEvent event = new OutboxEvent(null, "BALANCE_LOW", login,
+                            "Снято " + amount + " руб. Новый баланс: " + newBalance + " руб",
+                            LocalDateTime.now(), false, null);
+                    return outboxEventRepository.save(event).thenReturn(newBalance);
                 });
     }
 
@@ -120,13 +139,11 @@ public class AccountService {
             return Mono.error(new InvalidTransferException("Cannot transfer to yourself"));
         }
 
-        // Validate recipient exists before touching sender balance
         return accountRepository.findByLogin(toLogin)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(toLogin)))
                 .flatMap(ignored -> accountRepository.decrementBalanceIfSufficient(fromLogin, amount))
                 .flatMap(senderUpdated -> {
                     if (senderUpdated == 0) {
-                        // Re-query actual current balance — upfront stale read is unsafe under concurrency
                         return accountRepository.findByLogin(fromLogin)
                                 .switchIfEmpty(Mono.error(new AccountNotFoundException(fromLogin)))
                                 .flatMap(sender -> Mono.error(new InsufficientFundsException(sender.getBalance())));
@@ -148,6 +165,20 @@ public class AccountService {
                                         tuple.getT2().getName()
                                 ));
                             });
+                })
+                .flatMap(result -> {
+                    OutboxEvent senderEvent = new OutboxEvent(null, "TRANSFER_SENT", fromLogin,
+                            "Вы перевели " + amount + " руб пользователю " + result.recipientName()
+                                    + ". Новый баланс: " + result.senderBalance() + " руб",
+                            LocalDateTime.now(), false, null);
+                    OutboxEvent recipientEvent = new OutboxEvent(null, "TRANSFER_RECEIVED", toLogin,
+                            "Вы получили " + amount + " руб от пользователя " + result.senderName()
+                                    + ". Новый баланс: " + result.recipientBalance() + " руб",
+                            LocalDateTime.now(), false, null);
+                    return Mono.zip(
+                            outboxEventRepository.save(senderEvent),
+                            outboxEventRepository.save(recipientEvent)
+                    ).thenReturn(result);
                 });
     }
 

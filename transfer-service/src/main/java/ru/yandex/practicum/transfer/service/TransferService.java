@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
-import ru.yandex.practicum.transfer.client.NotificationClient;
-import ru.yandex.practicum.transfer.dto.AccountDto;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
@@ -24,7 +22,6 @@ import java.util.Map;
 public class TransferService {
 
     private final WebClient webClient;
-    private final NotificationClient notificationClient;
     private final ObjectMapper objectMapper;
 
     @Value("${services.accounts.host:accounts-service}")
@@ -50,32 +47,15 @@ public class TransferService {
                         .build())
                 .retrieve()
                 .bodyToMono(TransferResult.class)
-                .flatMap(result -> {
+                .map(result -> {
                     log.info("Transfer successful. Sender new balance: {}, Recipient new balance: {}",
                             result.senderBalance(), result.recipientBalance());
-                    Mono<Void> senderNotification = notificationClient.sendTransferNotification(
-                            request.senderLogin(),
-                            "Вы перевели " + request.amount() + " руб пользователю " +
-                            result.recipientName() + ". Новый баланс: " + result.senderBalance() + " руб",
-                            "TRANSFER_SENT"
+                    return new TransferResponse(
+                            true,
+                            "Transfer successful",
+                            result.senderBalance(),
+                            result.recipientBalance()
                     );
-                    Mono<Void> recipientNotification = notificationClient.sendTransferNotification(
-                            request.recipientLogin(),
-                            "Вы получили " + request.amount() + " руб от пользователя " +
-                            result.senderName() + ". Новый баланс: " + result.recipientBalance() + " руб",
-                            "TRANSFER_RECEIVED"
-                    );
-                    return Mono.zip(senderNotification, recipientNotification)
-                            .onErrorResume(notificationError -> {
-                                log.warn("Failed to send notifications, but transfer was successful", notificationError);
-                                return Mono.empty();
-                            })
-                            .then(Mono.just(new TransferResponse(
-                                    true,
-                                    "Transfer successful",
-                                    result.senderBalance(),
-                                    result.recipientBalance()
-                            )));
                 })
                 .onErrorResume(e -> {
                     log.error("Transfer failed: {}", e.getMessage());

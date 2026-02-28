@@ -43,7 +43,7 @@ class NotificationClientTest {
         when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
-        Mono<Void> result = notificationClient.sendAccountUpdatedNotification("ivanov", "Account updated");
+        Mono<Void> result = notificationClient.sendNotification("ivanov", "Account updated", "ACCOUNT_UPDATED");
         StepVerifier.create(result)
                 .verifyComplete();
     }
@@ -56,7 +56,7 @@ class NotificationClientTest {
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Void.class))
                 .thenReturn(Mono.error(new RuntimeException("Notification service down")));
-        Mono<Void> result = notificationClient.sendAccountUpdatedNotification("ivanov", "Account updated");
+        Mono<Void> result = notificationClient.sendNotification("ivanov", "Account updated", "ACCOUNT_UPDATED");
         StepVerifier.create(result)
                 .verifyComplete();
     }
