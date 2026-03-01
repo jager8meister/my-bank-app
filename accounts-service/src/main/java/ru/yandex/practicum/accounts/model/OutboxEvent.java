@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("accounts_schema.outbox_events")
+@Table(name = "outbox_events", schema = "accounts_schema")
 public class OutboxEvent {
 
     @Id
