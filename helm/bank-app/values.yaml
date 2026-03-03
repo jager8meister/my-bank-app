@@ -25,35 +25,35 @@ keycloak:
 
 accounts-service:
   image: "my-bank-app-accounts-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 auth-service:
   image: "my-bank-app-auth-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 cash-service:
   image: "my-bank-app-cash-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 transfer-service:
   image: "my-bank-app-transfer-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 notifications-service:
   image: "my-bank-app-notifications-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 gateway-service:
   image: "my-bank-app-gateway-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1
 
 front-service:
   image: "my-bank-app-front-service:latest"
-  imagePullPolicy: Never
+  imagePullPolicy: IfNotPresent
   replicas: 1

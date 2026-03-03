@@ -43,10 +43,6 @@ class CashControllerTest {
     @MockBean
     private CashService cashService;
 
-    // -----------------------------------------------------------------------
-    // POST with valid request → 200
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/cash/{login} with valid request and user JWT → 200")
     void shouldReturnOkForValidRequestWithUserJwt() {
@@ -96,22 +92,14 @@ class CashControllerTest {
                 .jsonPath("$.info").isEqualTo("Снято 500 руб");
     }
 
-    // -----------------------------------------------------------------------
-    // POST without authorization → 401
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/cash/{login} without authorization → 401")
     void shouldReturn401WhenNoAuthorization() {
         CashOperationRequest request = new CashOperationRequest(500L, CashAction.PUT);
 
-        // Stub cashService to avoid NPE — Mono.then(arg) evaluates arg eagerly.
-        // The UnauthorizedException path will short-circuit before the service is called,
-        // but the arg to .then() must be non-null to construct the pipeline.
         when(cashService.processCashOperation(any(), any()))
                 .thenReturn(Mono.empty());
 
-        // No mutateWith — authentication is null → AuthorizationUtils throws UnauthorizedException → 401
         webTestClient
                 .post()
                 .uri("/api/cash/ivanov")
@@ -121,14 +109,9 @@ class CashControllerTest {
                 .expectStatus().isUnauthorized();
     }
 
-    // -----------------------------------------------------------------------
-    // POST with invalid body (zero/null amount) → 400
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/cash/{login} with null value → 400")
     void shouldReturn400ForNullValue() {
-        // Send raw JSON where value is null (violates @NotNull + @Positive)
         String invalidBody = "{\"value\":null,\"action\":\"PUT\"}";
 
         webTestClient
@@ -146,7 +129,6 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} with zero value → 400")
     void shouldReturn400ForZeroValue() {
-        // value=0 violates @Positive constraint
         String invalidBody = "{\"value\":0,\"action\":\"PUT\"}";
 
         webTestClient
@@ -164,7 +146,6 @@ class CashControllerTest {
     @Test
     @DisplayName("POST /api/cash/{login} with missing action → 400")
     void shouldReturn400ForMissingAction() {
-        // action is null/missing — violates @NotNull
         String invalidBody = "{\"value\":500}";
 
         webTestClient
@@ -179,17 +160,11 @@ class CashControllerTest {
                 .expectStatus().isBadRequest();
     }
 
-    // -----------------------------------------------------------------------
-    // Wrong account → 403
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/cash/{login} accessing another user's account → 403")
     void shouldReturn403WhenAccessingAnotherUsersAccount() {
         CashOperationRequest request = new CashOperationRequest(500L, CashAction.PUT);
 
-        // JWT says preferred_username=petrov but trying to access ivanov's account
-        // No SCOPE_microservice-scope → authorization check falls through to username comparison
         when(cashService.processCashOperation(any(), any()))
                 .thenReturn(Mono.error(new ForbiddenException("You can only perform operations on your own account")));
 
@@ -204,10 +179,6 @@ class CashControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // -----------------------------------------------------------------------
-    // Service throws CashOperationException → 400
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("POST /api/cash/{login} when service throws CashOperationException → 400")
@@ -231,10 +202,6 @@ class CashControllerTest {
                 .jsonPath("$.message").isEqualTo("Сервис временно недоступен. Попробуйте позже.");
     }
 
-    // -----------------------------------------------------------------------
-    // Service call with microservice-scope bypasses owner check
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/cash/{login} with SCOPE_microservice-scope bypasses owner check → 200")
     void shouldAllowMicroserviceScopeToAccessAnyAccount() {
@@ -244,7 +211,6 @@ class CashControllerTest {
         when(cashService.processCashOperation(eq("ivanov"), any(CashOperationRequest.class)))
                 .thenReturn(Mono.just(response));
 
-        // Subject is "other-service" but has SCOPE_microservice-scope → should be allowed
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "other-service").claim("sub", "other-service"))

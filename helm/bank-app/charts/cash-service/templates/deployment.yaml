@@ -14,15 +14,23 @@ spec:
       labels:
         app: cash-service
     spec:
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: wait-for-keycloak
           image: alpine:3.19
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c", "until wget -qO/dev/null http://keycloak:9090/realms/master 2>/dev/null; do echo Waiting for Keycloak; sleep 3; done; echo Keycloak is ready"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       containers:
         - name: cash-service
           image: {{ .Values.image | quote }}
-          imagePullPolicy: {{ .Values.imagePullPolicy | default "Never" }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           ports:
             - containerPort: 8082
           envFrom:
@@ -30,6 +38,16 @@ spec:
                 name: {{ include "cash-service.fullname" . }}-config
             - secretRef:
                 name: {{ include "cash-service.fullname" . }}-secret
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           readinessProbe:
             httpGet:
               path: /actuator/health
@@ -43,3 +61,10 @@ spec:
               port: 8082
             initialDelaySeconds: 60
             periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

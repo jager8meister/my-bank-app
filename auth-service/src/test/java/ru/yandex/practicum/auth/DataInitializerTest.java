@@ -44,7 +44,6 @@ class DataInitializerTest {
             User u = invocation.getArgument(0);
             return Mono.just(new User(1L, u.getLogin(), u.getPassword(), u.getRole()));
         });
-        // TransactionalOperator.transactional(publisher) should pass through the publisher
         when(transactionalOperator.transactional(any(Mono.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

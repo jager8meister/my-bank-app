@@ -66,6 +66,13 @@ spec:
             initialDelaySeconds: 120
             periodSeconds: 30
             timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
       volumes:
         - name: realm-config
           configMap:

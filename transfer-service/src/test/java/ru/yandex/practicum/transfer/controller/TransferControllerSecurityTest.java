@@ -54,10 +54,6 @@ class TransferControllerSecurityTest {
     @MockBean
     private ReactiveJwtDecoder reactiveJwtDecoder;
 
-    // -------------------------------------------------------------------------
-    // 401 — no authentication at all
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/transfer without auth → 401")
     void shouldReturn401_whenNoAuthentication() {
@@ -71,10 +67,6 @@ class TransferControllerSecurityTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // -------------------------------------------------------------------------
-    // 200 — correct owner, correct request
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("POST /api/transfer with valid JWT → 200")
@@ -99,10 +91,6 @@ class TransferControllerSecurityTest {
                 .jsonPath("$.message").isEqualTo("Transfer successful");
     }
 
-    // -------------------------------------------------------------------------
-    // 400 — invalid body (negative amount)
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/transfer with negative amount → 400")
     void shouldReturn400_whenAmountIsNegative() {
@@ -123,7 +111,6 @@ class TransferControllerSecurityTest {
     @Test
     @DisplayName("POST /api/transfer with null senderLogin → 400")
     void shouldReturn400_whenSenderLoginIsBlank() {
-        // Jackson will serialise the record, but bean validation runs server-side
         String json = "{\"senderLogin\":\"\",\"recipientLogin\":\"petrov\",\"amount\":100}";
 
         webTestClient
@@ -138,16 +125,9 @@ class TransferControllerSecurityTest {
                 .expectStatus().isBadRequest();
     }
 
-    // -------------------------------------------------------------------------
-    // 403 — authenticated but wrong account owner
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("POST /api/transfer from another user's account → 403")
     void shouldReturn403_whenTransferringFromSomeoneElsesAccount() {
-        // ivanov is authenticated but tries to transfer petrov's money.
-        // Stub transfer() to avoid NPE from .then(null) even though auth check
-        // will short-circuit before reaching the service call.
         TransferRequest request = new TransferRequest("petrov", "sidorov", 500L);
         when(transferService.transfer(any(TransferRequest.class))).thenReturn(Mono.empty());
 
@@ -162,10 +142,6 @@ class TransferControllerSecurityTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // -------------------------------------------------------------------------
-    // 200 — microservice scope bypasses ownership check
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("POST /api/transfer with SCOPE_microservice-scope → 200 (bypass ownership)")
@@ -188,10 +164,6 @@ class TransferControllerSecurityTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true);
     }
-
-    // -------------------------------------------------------------------------
-    // 400 — service throws InsufficientFundsException
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("POST /api/transfer when service throws InsufficientFundsException → 400")

@@ -145,7 +145,6 @@ public class AccountService {
                 Map<String, Object> errorResponse = objectMapper.readValue(responseBody, Map.class);
                 String message = (String) errorResponse.get("message");
                 if (message != null) {
-                    // Переводим ключевые фразы на русский
                     if (message.toLowerCase().contains("insufficient funds")) {
                         return "Недостаточно средств на счёте";
                     }
@@ -161,7 +160,6 @@ public class AccountService {
                     return message;
                 }
             } catch (Exception ex) {
-                // Если не удалось распарсить JSON, возвращаем исходное сообщение
             }
         }
         return "Ошибка: " + e.getMessage();

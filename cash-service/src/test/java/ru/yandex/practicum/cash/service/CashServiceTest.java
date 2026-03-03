@@ -47,10 +47,6 @@ class CashServiceTest {
         wireMockServer.stop();
     }
 
-    // -----------------------------------------------------------------------
-    // Successful deposit (PUT)
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("Successful deposit (PUT) — accounts-service returns 200 with new balance")
     void shouldProcessDepositSuccessfully() {
@@ -73,10 +69,6 @@ class CashServiceTest {
                 })
                 .verifyComplete();
     }
-
-    // -----------------------------------------------------------------------
-    // Successful withdrawal (GET)
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("Successful withdrawal (GET) — accounts-service returns 200 with new balance")
@@ -101,10 +93,6 @@ class CashServiceTest {
                 .verifyComplete();
     }
 
-    // -----------------------------------------------------------------------
-    // Insufficient funds — accounts-service returns 400 → InsufficientFundsException
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("Insufficient funds — accounts-service returns 400 → InsufficientFundsException")
     void shouldThrowInsufficientFundsExceptionOn400() {
@@ -122,10 +110,6 @@ class CashServiceTest {
                 .expectError(InsufficientFundsException.class)
                 .verify();
     }
-
-    // -----------------------------------------------------------------------
-    // accounts-service returns 5xx → CashOperationException
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("accounts-service unavailable (5xx) → CashOperationException")
@@ -145,10 +129,6 @@ class CashServiceTest {
                         ex.getMessage().contains("Сервис счетов недоступен"))
                 .verify();
     }
-
-    // -----------------------------------------------------------------------
-    // Fallback when circuit breaker is open → CashOperationException
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("Fallback when circuit breaker is open → CashOperationException")
@@ -171,10 +151,6 @@ class CashServiceTest {
                 .verify();
     }
 
-    // -----------------------------------------------------------------------
-    // Other 4xx (e.g. 403) → CashOperationException (not InsufficientFunds)
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("Other 4xx (e.g. 403) from accounts-service → CashOperationException")
     void shouldThrowCashOperationExceptionOnOther4xx() {
@@ -192,10 +168,6 @@ class CashServiceTest {
                 .expectError(CashOperationException.class)
                 .verify();
     }
-
-    // -----------------------------------------------------------------------
-    // Deposit info message contains correct amount
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("Deposit info message contains amount value")
@@ -217,10 +189,6 @@ class CashServiceTest {
                 })
                 .verifyComplete();
     }
-
-    // -----------------------------------------------------------------------
-    // Minimum valid amount
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("Minimum valid amount (1L) is processed correctly")

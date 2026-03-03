@@ -56,10 +56,6 @@ class TransferServiceWebClientTest {
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
     }
 
-    // -------------------------------------------------------------------------
-    // Successful transfer — accounts-service returned 200
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("Successful transfer: accounts-service returns 200 with balances")
     void shouldTransferSuccessfully_whenAccountsServiceReturns200() {
@@ -79,10 +75,6 @@ class TransferServiceWebClientTest {
                 })
                 .verifyComplete();
     }
-
-    // -------------------------------------------------------------------------
-    // Insufficient funds — accounts-service returns HTTP 400
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("HTTP 400 from accounts-service → InsufficientFundsException")
@@ -105,10 +97,6 @@ class TransferServiceWebClientTest {
                 .verify();
     }
 
-    // -------------------------------------------------------------------------
-    // Recipient not found — accounts-service returns HTTP 404
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("HTTP 404 from accounts-service → InvalidTransferException")
     void shouldThrowInvalidTransferException_whenAccountsServiceReturns404() {
@@ -129,10 +117,6 @@ class TransferServiceWebClientTest {
                 .expectError(InvalidTransferException.class)
                 .verify();
     }
-
-    // -------------------------------------------------------------------------
-    // accounts-service unavailable — 5xx
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("HTTP 500 from accounts-service → TransferException")
@@ -176,10 +160,6 @@ class TransferServiceWebClientTest {
                 .verify();
     }
 
-    // -------------------------------------------------------------------------
-    // Transfer to self
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("Transfer to self → InvalidTransferException (no WebClient call)")
     void shouldRejectTransferToSelf() {
@@ -191,10 +171,6 @@ class TransferServiceWebClientTest {
                         e.getMessage().contains("yourself"))
                 .verify();
     }
-
-    // -------------------------------------------------------------------------
-    // Invalid amount edge cases (already in main test but duplicated for clarity)
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Negative amount → InvalidTransferException (no WebClient call)")
@@ -225,10 +201,6 @@ class TransferServiceWebClientTest {
                 .expectError(InvalidTransferException.class)
                 .verify();
     }
-
-    // -------------------------------------------------------------------------
-    // Non-WebClientResponseException → wrapped as TransferException
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Generic connection exception → TransferException")

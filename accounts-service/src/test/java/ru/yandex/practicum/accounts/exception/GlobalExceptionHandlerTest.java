@@ -43,8 +43,6 @@ class GlobalExceptionHandlerTest {
         return SecurityTestUtils.createServiceAuthentication();
     }
 
-    // ==================== AccountNotFoundException → 404 ====================
-
     @Test
     @DisplayName("AccountNotFoundException maps to 404 Not Found")
     void accountNotFoundExceptionMapsTo404() {
@@ -62,8 +60,6 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.error").isEqualTo("Not Found")
                 .jsonPath("$.message").isNotEmpty();
     }
-
-    // ==================== AccountAlreadyExistsException → 409 ====================
 
     @Test
     @DisplayName("AccountAlreadyExistsException maps to 409 Conflict")
@@ -90,8 +86,6 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.message").isNotEmpty();
     }
 
-    // ==================== InsufficientFundsException → 400 ====================
-
     @Test
     @DisplayName("InsufficientFundsException maps to 400 Bad Request")
     void insufficientFundsExceptionMapsTo400() {
@@ -110,8 +104,6 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.message").isNotEmpty();
     }
 
-    // ==================== InvalidAmountException → 400 ====================
-
     @Test
     @DisplayName("InvalidAmountException maps to 400 Bad Request")
     void invalidAmountExceptionMapsTo400() {
@@ -128,8 +120,6 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.status").isEqualTo(400)
                 .jsonPath("$.message").isNotEmpty();
     }
-
-    // ==================== InvalidTransferException → 400 ====================
 
     @Test
     @DisplayName("InvalidTransferException maps to 400 Bad Request")
@@ -148,14 +138,10 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.message").isEqualTo("Cannot transfer to yourself");
     }
 
-    // ==================== ForbiddenException → 403 ====================
-
     @Test
     @DisplayName("ForbiddenException maps to 403 Forbidden")
     void forbiddenExceptionMapsTo403() {
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.getAccountInfo("petrov")).thenReturn(Mono.empty());
-        // User 'ivanov' trying to access 'petrov' account triggers ForbiddenException from AuthorizationUtils
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockAuthentication(userAuth()))
                 .get()
@@ -166,8 +152,6 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.status").isEqualTo(403)
                 .jsonPath("$.error").isEqualTo("Forbidden");
     }
-
-    // ==================== Generic Exception → 500 ====================
 
     @Test
     @DisplayName("Unexpected RuntimeException maps to 500 Internal Server Error")
@@ -186,12 +170,9 @@ class GlobalExceptionHandlerTest {
                 .jsonPath("$.message").isNotEmpty();
     }
 
-    // ==================== Validation errors → 400 ====================
-
     @Test
     @DisplayName("ConstraintViolationException (invalid path param) maps to 400 Bad Request")
     void constraintViolationExceptionMapsTo400() {
-        // Login too long (> 20 chars) triggers @Size constraint violation
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockAuthentication(userAuth()))
                 .get()
@@ -203,7 +184,6 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("WebExchangeBindException (invalid request body) maps to 400 Bad Request")
     void webExchangeBindExceptionMapsTo400() {
-        // blank name triggers @NotBlank validation on the request body
         String invalidJson = "{\"login\":\"validuser\",\"name\":\"\",\"birthdate\":\"1990-01-01\"}";
         webTestClient
                 .post()
@@ -215,13 +195,10 @@ class GlobalExceptionHandlerTest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(400)
                 .jsonPath("$.message").value(msg -> {
-                    // message should mention validation
                     assert msg.toString().contains("Validation") || msg.toString().contains("validation")
                             || msg.toString().contains("name");
                 });
     }
-
-    // ==================== Response structure verification ====================
 
     @Test
     @DisplayName("Error response always contains timestamp field")

@@ -61,8 +61,6 @@ class AccountServiceTest {
                 .thenReturn(Mono.empty());
     }
 
-    // ==================== getAccountInfo ====================
-
     @Test
     @DisplayName("Should get account info successfully")
     void shouldGetAccountInfo() {
@@ -112,8 +110,6 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
-
-    // ==================== depositCash ====================
 
     @Test
     @DisplayName("Should deposit cash successfully and write outbox event")
@@ -172,8 +168,6 @@ class AccountServiceTest {
                 .verify();
         verify(accountRepository, never()).incrementBalance(any(), any());
     }
-
-    // ==================== withdrawCash ====================
 
     @Test
     @DisplayName("Should withdraw cash successfully and write outbox event")
@@ -238,8 +232,6 @@ class AccountServiceTest {
                 .verify();
         verify(accountRepository, never()).decrementBalanceIfSufficient(any(), any());
     }
-
-    // ==================== transferMoney ====================
 
     @Test
     @DisplayName("Should transfer money successfully and write two outbox events")
@@ -359,8 +351,6 @@ class AccountServiceTest {
         verify(accountRepository, never()).decrementBalanceIfSufficient(any(), any());
     }
 
-    // ==================== createAccount ====================
-
     @Test
     @DisplayName("Should create account successfully")
     void shouldCreateAccountSuccessfully() {
@@ -419,8 +409,6 @@ class AccountServiceTest {
                 .verify();
     }
 
-    // ==================== updateAccount ====================
-
     @Test
     @DisplayName("Should update account successfully and write outbox event")
     void shouldUpdateAccountSuccessfully() {
@@ -457,8 +445,6 @@ class AccountServiceTest {
         verify(accountRepository, never()).save(any());
     }
 
-    // ==================== updateBalance ====================
-
     @Test
     @DisplayName("Should update balance successfully")
     void shouldUpdateBalanceSuccessfully() {
@@ -481,8 +467,6 @@ class AccountServiceTest {
                 .verify();
         verify(accountRepository, never()).save(any());
     }
-
-    // ==================== getBalance ====================
 
     @Test
     @DisplayName("Should get balance successfully")

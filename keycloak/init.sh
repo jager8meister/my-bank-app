@@ -24,13 +24,13 @@ if [ -z "$DEMO_USER_PASSWORD" ]; then
 fi
 
 echo "[keycloak-init] Waiting for Keycloak at ${KEYCLOAK_URL}..."
-until curl -sf "${KEYCLOAK_URL}/realms/master" > /dev/null; do
+until curl -sf --max-time 5 "${KEYCLOAK_URL}/realms/master" > /dev/null; do
   sleep 3
 done
 echo "[keycloak-init] Keycloak is up."
 
 echo "[keycloak-init] Getting admin token..."
-TOKEN=$(curl -sf -X POST \
+TOKEN=$(curl -sf --max-time 10 -X POST \
   "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=${ADMIN_USER}&password=${ADMIN_PASSWORD}&grant_type=password&client_id=admin-cli" \
@@ -53,18 +53,18 @@ update_client_secret() {
     echo "[keycloak-init] WARNING: No secret env var for ${CLIENT_ID}, skipping."
     return
   fi
-  CLIENT_UUID=$(curl -sf \
+  CLIENT_UUID=$(curl -sf --max-time 10 \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=${CLIENT_ID}" \
     -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
   if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
     echo "[keycloak-init] ERROR: Client ${CLIENT_ID} not found"
     return 1
   fi
-  CLIENT_JSON=$(curl -sf \
+  CLIENT_JSON=$(curl -sf --max-time 10 \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}" \
     -H "Authorization: Bearer ${TOKEN}")
   UPDATED_JSON=$(echo "$CLIENT_JSON" | jq --arg s "$SECRET" '.secret = $s')
-  curl -sf -X PUT \
+  curl -sf --max-time 10 -X PUT \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
@@ -81,7 +81,7 @@ update_client_secret "gateway-client"       "${GATEWAY_CLIENT_SECRET}"
 # -----------------------------------------------------------------
 
 get_role() {
-  curl -sf \
+  curl -sf --max-time 10 \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/roles/$1" \
     -H "Authorization: Bearer ${TOKEN}"
 }
@@ -101,7 +101,7 @@ assign_realm_roles() {
     fi
   done
   ROLES_JSON="${ROLES_JSON}]"
-  curl -sf -X POST \
+  curl -sf --max-time 10 -X POST \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/users/${USER_UUID}/role-mappings/realm" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
@@ -114,15 +114,15 @@ assign_realm_roles() {
 
 echo "[keycloak-init] Setting up microservices-client service account..."
 
-CLIENT_UUID=$(curl -sf \
+CLIENT_UUID=$(curl -sf --max-time 10 \
   "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=microservices-client" \
   -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
 
-SA_UUID=$(curl -sf \
+SA_UUID=$(curl -sf --max-time 10 \
   "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}/service-account-user" \
   -H "Authorization: Bearer ${TOKEN}" | jq -r '.id')
 
-ALREADY=$(curl -sf \
+ALREADY=$(curl -sf --max-time 10 \
   "${KEYCLOAK_URL}/admin/realms/${REALM}/users/${SA_UUID}/role-mappings/realm" \
   -H "Authorization: Bearer ${TOKEN}" \
   | jq -r '[.[].name] | contains(["MICROSERVICE"])')
@@ -145,7 +145,7 @@ create_user() {
   EMAIL="$4"
   shift 4
 
-  COUNT=$(curl -sf \
+  COUNT=$(curl -sf --max-time 10 \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${USERNAME}&exact=true" \
     -H "Authorization: Bearer ${TOKEN}" | jq length)
 
@@ -164,13 +164,13 @@ create_user() {
       enabled: true, emailVerified: true,
       credentials: [{type: "password", value: $pw, temporary: false}]}')
 
-  curl -sf -X POST \
+  curl -sf --max-time 10 -X POST \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/users" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
     -d "$USER_JSON" > /dev/null
 
-  USER_UUID=$(curl -sf \
+  USER_UUID=$(curl -sf --max-time 10 \
     "${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${USERNAME}&exact=true" \
     -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
 

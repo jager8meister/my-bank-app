@@ -10,6 +10,7 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   backoffLimit: 5
+  activeDeadlineSeconds: 600
   template:
     spec:
       restartPolicy: OnFailure
@@ -37,6 +38,13 @@ spec:
               value: {{ .Values.global.frontClientSecret | quote }}
             - name: GATEWAY_CLIENT_SECRET
               value: {{ .Values.global.gatewayClientSecret | quote }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           volumeMounts:
             - name: init-script
               mountPath: /scripts
