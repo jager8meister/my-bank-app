@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auth-service.fullname" . }}-config
+  labels:
+    app: auth-service
+data:
+  AUTH_SERVICE_PORT: "8083"
+  POSTGRES_HOST: {{ .Values.global.postgres.host | quote }}
+  POSTGRES_PORT: {{ .Values.global.postgres.port | quote }}
+  POSTGRES_DB: {{ .Values.global.postgres.db | quote }}
+  POSTGRES_USER: {{ .Values.global.postgres.user | quote }}
+  KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
+  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}
+  KEYCLOAK_ADMIN: {{ .Values.global.keycloak.adminUser | quote }}
+  ACCOUNTS_SERVICE_HOST: "accounts-service"
+  ACCOUNTS_SERVICE_PORT: "8081"

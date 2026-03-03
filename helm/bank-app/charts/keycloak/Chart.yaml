@@ -1,0 +1,5 @@
+apiVersion: v2
+name: keycloak
+description: Keycloak OAuth2/OIDC server for bank app
+type: application
+version: 1.0.0

@@ -1,0 +1,13 @@
+image: "quay.io/keycloak/keycloak:23.0"
+nodePort: 30090
+global:
+  postgres:
+    host: postgres
+    port: "5432"
+    db: bankdb
+    user: bankuser
+    password: changeme
+  keycloak:
+    externalUrl: "http://localhost:30090"
+    adminUser: admin
+    adminPassword: changeme

@@ -1,0 +1,5 @@
+image: "bank-front-service:latest"
+imagePullPolicy: Never
+replicas: 1
+nodePort: 30084
+global: {}

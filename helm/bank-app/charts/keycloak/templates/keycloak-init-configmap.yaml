@@ -1,0 +1,160 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "keycloak.fullname" . }}-init-script
+  labels:
+    app: keycloak
+data:
+  init.sh: |
+    #!/bin/sh
+    set -e
+
+    KEYCLOAK_URL="${KEYCLOAK_INTERNAL_URL:-http://keycloak:9090}"
+    REALM="${KEYCLOAK_REALM:-bank-realm}"
+    ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
+    ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}"
+    DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD}"
+
+    if [ -z "$ADMIN_PASSWORD" ]; then
+      echo "[keycloak-init] ERROR: KEYCLOAK_ADMIN_PASSWORD is not set"
+      exit 1
+    fi
+    if [ -z "$DEMO_USER_PASSWORD" ]; then
+      echo "[keycloak-init] ERROR: DEMO_USER_PASSWORD is not set"
+      exit 1
+    fi
+
+    echo "[keycloak-init] Waiting for Keycloak at ${KEYCLOAK_URL}..."
+    until curl -sf "${KEYCLOAK_URL}/realms/master" > /dev/null; do
+      sleep 3
+    done
+    echo "[keycloak-init] Keycloak is up."
+
+    echo "[keycloak-init] Getting admin token..."
+    TOKEN=$(curl -sf -X POST \
+      "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "username=${ADMIN_USER}&password=${ADMIN_PASSWORD}&grant_type=password&client_id=admin-cli" \
+      | jq -r '.access_token')
+
+    if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+      echo "[keycloak-init] ERROR: Failed to get admin token"
+      exit 1
+    fi
+    echo "[keycloak-init] Admin token obtained."
+
+    update_client_secret() {
+      CLIENT_ID="$1"
+      SECRET="$2"
+      if [ -z "$SECRET" ]; then
+        echo "[keycloak-init] WARNING: No secret for ${CLIENT_ID}, skipping."
+        return
+      fi
+      CLIENT_UUID=$(curl -sf \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=${CLIENT_ID}" \
+        -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
+      if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
+        echo "[keycloak-init] ERROR: Client ${CLIENT_ID} not found"
+        return 1
+      fi
+      CLIENT_JSON=$(curl -sf \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}" \
+        -H "Authorization: Bearer ${TOKEN}")
+      UPDATED_JSON=$(echo "$CLIENT_JSON" | jq --arg s "$SECRET" '.secret = $s')
+      curl -sf -X PUT \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "$UPDATED_JSON" > /dev/null
+      echo "[keycloak-init] Updated secret for '${CLIENT_ID}'."
+    }
+
+    update_client_secret "microservices-client" "${MICROSERVICES_CLIENT_SECRET}"
+    update_client_secret "front-client"         "${FRONT_CLIENT_SECRET}"
+    update_client_secret "gateway-client"       "${GATEWAY_CLIENT_SECRET}"
+
+    get_role() {
+      curl -sf \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/roles/$1" \
+        -H "Authorization: Bearer ${TOKEN}"
+    }
+
+    assign_realm_roles() {
+      USER_UUID="$1"
+      shift
+      ROLES_JSON="["
+      FIRST=1
+      for ROLE_NAME in "$@"; do
+        ROLE=$(get_role "${ROLE_NAME}")
+        if [ $FIRST -eq 1 ]; then
+          ROLES_JSON="${ROLES_JSON}${ROLE}"
+          FIRST=0
+        else
+          ROLES_JSON="${ROLES_JSON},${ROLE}"
+        fi
+      done
+      ROLES_JSON="${ROLES_JSON}]"
+      curl -sf -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/users/${USER_UUID}/role-mappings/realm" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${ROLES_JSON}" > /dev/null
+    }
+
+    echo "[keycloak-init] Setting up microservices-client service account..."
+    CLIENT_UUID=$(curl -sf \
+      "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=microservices-client" \
+      -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
+    SA_UUID=$(curl -sf \
+      "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${CLIENT_UUID}/service-account-user" \
+      -H "Authorization: Bearer ${TOKEN}" | jq -r '.id')
+    ALREADY=$(curl -sf \
+      "${KEYCLOAK_URL}/admin/realms/${REALM}/users/${SA_UUID}/role-mappings/realm" \
+      -H "Authorization: Bearer ${TOKEN}" \
+      | jq -r '[.[].name] | contains(["MICROSERVICE"])')
+    if [ "$ALREADY" = "true" ]; then
+      echo "[keycloak-init] MICROSERVICE role already assigned, skipping."
+    else
+      assign_realm_roles "${SA_UUID}" MICROSERVICE
+      echo "[keycloak-init] Assigned MICROSERVICE role to service account."
+    fi
+
+    create_user() {
+      USERNAME="$1"
+      FIRST_NAME="$2"
+      LAST_NAME="$3"
+      EMAIL="$4"
+      shift 4
+      COUNT=$(curl -sf \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${USERNAME}&exact=true" \
+        -H "Authorization: Bearer ${TOKEN}" | jq length)
+      if [ "${COUNT}" -gt 0 ]; then
+        echo "[keycloak-init] User '${USERNAME}' already exists, skipping."
+        return
+      fi
+      USER_JSON=$(jq -n \
+        --arg un "$USERNAME" \
+        --arg fn "$FIRST_NAME" \
+        --arg ln "$LAST_NAME" \
+        --arg em "$EMAIL" \
+        --arg pw "$DEMO_USER_PASSWORD" \
+        '{username: $un, firstName: $fn, lastName: $ln, email: $em,
+          enabled: true, emailVerified: true,
+          credentials: [{type: "password", value: $pw, temporary: false}]}')
+      curl -sf -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/users" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "$USER_JSON" > /dev/null
+      USER_UUID=$(curl -sf \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${USERNAME}&exact=true" \
+        -H "Authorization: Bearer ${TOKEN}" | jq -r '.[0].id')
+      assign_realm_roles "${USER_UUID}" "$@"
+      echo "[keycloak-init] Created user '${USERNAME}'."
+    }
+
+    create_user "ivanov"  "Иван"  "Иванов"  "ivanov@bank.local"  USER Accounts Cash Transfer Notifications
+    create_user "petrov"  "Петр"  "Петров"  "petrov@bank.local"  USER Accounts Cash Transfer Notifications
+    create_user "sidorov" "Сидор" "Сидоров" "sidorov@bank.local" USER Accounts Cash Transfer Notifications
+
+    echo "[keycloak-init] Initialization complete."

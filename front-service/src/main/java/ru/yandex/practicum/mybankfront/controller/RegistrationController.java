@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.mybankfront.dto.RegistrationRequest;
 import ru.yandex.practicum.mybankfront.service.RegistrationService;
@@ -95,7 +96,19 @@ public class RegistrationController {
                 .thenReturn("redirect:/?registered=true")
                 .onErrorResume(e -> {
                     log.error("Registration failed for {}: {}", login, e.getMessage());
-                    model.addAttribute("error", translateError(e.getMessage()));
+                    String errorMessage;
+                    if (e instanceof WebClientResponseException webEx) {
+                        String body = webEx.getResponseBodyAsString();
+                        // Try to extract "error" field from JSON like {"error":"Логин уже занят"}
+                        if (body.contains("\"error\"")) {
+                            errorMessage = body.replaceAll(".*\"error\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+                        } else {
+                            errorMessage = translateError(webEx.getMessage());
+                        }
+                    } else {
+                        errorMessage = translateError(e.getMessage());
+                    }
+                    model.addAttribute("error", errorMessage);
                     model.addAttribute("login", login);
                     model.addAttribute("name", name);
                     return Mono.just("register");

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: {{ .Values.image | quote }}
+          args: ["start", "--import-realm"]
+          ports:
+            - containerPort: 9090
+          env:
+            - name: KC_HTTP_PORT
+              value: "9090"
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://postgres:5432/{{ .Values.global.postgres.db }}?currentSchema=keycloak_schema"
+            - name: KC_DB_USERNAME
+              value: {{ .Values.global.postgres.user | quote }}
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.fullname" . }}-secret
+                  key: KC_DB_PASSWORD
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.global.keycloak.adminUser | quote }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.fullname" . }}-secret
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_HOSTNAME_URL
+              value: {{ .Values.global.keycloak.externalUrl | quote }}
+            - name: KC_HOSTNAME_ADMIN_URL
+              value: {{ .Values.global.keycloak.externalUrl | quote }}
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+          readinessProbe:
+            httpGet:
+              path: /realms/master
+              port: 9090
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /realms/master
+              port: 9090
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+      volumes:
+        - name: realm-config
+          configMap:
+            name: {{ include "keycloak.fullname" . }}-realm

@@ -30,8 +30,6 @@
     </properties>
 
     <modules>
-        <module>config-server</module>
-        <module>eureka-server</module>
         <module>gateway-service</module>
         <module>accounts-service</module>
         <module>cash-service</module>

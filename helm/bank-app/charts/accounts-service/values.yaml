@@ -1,0 +1,4 @@
+image: "bank-accounts-service:latest"
+imagePullPolicy: Never
+replicas: 1
+global: {}

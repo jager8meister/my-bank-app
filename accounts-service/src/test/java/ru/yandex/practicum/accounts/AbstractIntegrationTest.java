@@ -1,6 +1,5 @@
 package ru.yandex.practicum.accounts;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -31,12 +30,6 @@ public abstract class AbstractIntegrationTest {
         ));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
-        registry.add("spring.cloud.config.enabled", () -> "false");
-        registry.add("spring.config.import", () -> "optional:configserver:");
-        registry.add("eureka.client.enabled", () -> "false");
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
-    }
-    @BeforeEach
-    void setUp() {
     }
 }

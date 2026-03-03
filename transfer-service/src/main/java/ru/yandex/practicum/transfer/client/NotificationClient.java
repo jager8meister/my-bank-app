@@ -17,12 +17,16 @@ public class NotificationClient {
     @Value("${services.notifications.host:notifications-service}")
     private String notificationsServiceHost;
 
+    @Value("${services.notifications.port:8086}")
+    private int notificationsServicePort;
+
     public Mono<Void> sendTransferNotification(String recipient, String message, String type) {
         log.info("Sending {} notification to {}", type, recipient);
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
-                        .scheme("lb")
+                        .scheme("http")
                         .host(notificationsServiceHost)
+                        .port(notificationsServicePort)
                         .path("/api/notifications")
                         .build())
                 .bodyValue(new NotificationRequest(recipient, message, type))

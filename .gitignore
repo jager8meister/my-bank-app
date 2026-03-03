@@ -52,24 +52,20 @@ spring-boot-devtools.properties
 *token*.json
 admin_token.txt
 
-# Keycloak sensitive data
-keycloak/realm-export.json
 
-# Test artifacts and reports
-test*.js
-test*.sh
-test*.py
+# PowerShell test/debug scripts
+*.ps1
+
+# Test artifacts
 *test-report*.json
 *test-report*.md
 *TEST_REPORT*.md
 *REPORT*.md
 *SUMMARY*.txt
-verify-*.js
-browser-test.js
 *.png
-*.html
 screenshots/
 test-results/
 cookies*.txt
 node_modules/
+package.json
 package-lock.json

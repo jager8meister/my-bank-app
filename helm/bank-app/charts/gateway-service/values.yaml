@@ -1,0 +1,5 @@
+image: "bank-gateway-service:latest"
+imagePullPolicy: Never
+replicas: 1
+nodePort: 30080
+global: {}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "front-service.fullname" . }}-config
+  labels:
+    app: front-service
+data:
+  FRONT_SERVICE_PORT: "8084"
+  GATEWAY_SERVICE_HOST: "gateway-service"
+  GATEWAY_PORT: "8080"
+  AUTH_SERVICE_HOST: "auth-service"
+  AUTH_SERVICE_PORT: "8083"
+  KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
+  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}

@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-service
+  labels:
+    app: notifications-service
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: notifications-service
+  template:
+    metadata:
+      labels:
+        app: notifications-service
+    spec:
+      initContainers:
+        - name: wait-for-keycloak
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "until wget -qO/dev/null http://keycloak:9090/realms/master 2>/dev/null; do echo Waiting for Keycloak; sleep 3; done; echo Keycloak is ready"]
+      containers:
+        - name: notifications-service
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "Never" }}
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: {{ include "notifications-service.fullname" . }}-config
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 60
+            periodSeconds: 30

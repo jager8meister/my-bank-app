@@ -1,5 +1,10 @@
 package ru.yandex.practicum.cash.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +25,25 @@ import ru.yandex.practicum.cash.util.AuthorizationUtils;
 @RequestMapping("/api/cash")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "Cash Operations", description = "Cash deposit and withdrawal operations")
 public class CashController {
 
     private final CashService cashService;
 
+    @Operation(
+            summary = "Process a cash operation",
+            description = "Performs a cash deposit (PUT) or withdrawal (GET) on the account identified by the given login. " +
+                    "The authenticated user must match the login in the path."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Cash operation completed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request body or path variable"),
+            @ApiResponse(responseCode = "403", description = "Access denied — authenticated user does not match the requested login"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — missing or invalid JWT token")
+    })
     @PostMapping("/{login}")
     public Mono<CashResponse> processCashOperation(
+            @Parameter(description = "Account owner login", example = "ivanov")
             @PathVariable @NotBlank(message = "Login is required") String login,
             @RequestBody @Valid CashOperationRequest operation,
             Authentication authentication

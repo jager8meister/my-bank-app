@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "keycloak.fullname" . }}-init
+  labels:
+    app: keycloak-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: keycloak-init
+          image: alpine:3.19
+          command: ["/bin/sh", "-c", "apk add --no-cache curl jq > /dev/null && /scripts/init.sh"]
+          env:
+            - name: KEYCLOAK_INTERNAL_URL
+              value: "http://keycloak:9090"
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.global.keycloak.realm | quote }}
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.global.keycloak.adminUser | quote }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.fullname" . }}-secret
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: DEMO_USER_PASSWORD
+              value: {{ .Values.global.demoUserPassword | quote }}
+            - name: MICROSERVICES_CLIENT_SECRET
+              value: {{ .Values.global.microservicesClientSecret | quote }}
+            - name: FRONT_CLIENT_SECRET
+              value: {{ .Values.global.frontClientSecret | quote }}
+            - name: GATEWAY_CLIENT_SECRET
+              value: {{ .Values.global.gatewayClientSecret | quote }}
+          volumeMounts:
+            - name: init-script
+              mountPath: /scripts
+      volumes:
+        - name: init-script
+          configMap:
+            name: {{ include "keycloak.fullname" . }}-init-script
+            defaultMode: 0755

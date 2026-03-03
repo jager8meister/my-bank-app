@@ -70,8 +70,9 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
             if (now - windowStart > WINDOW_DURATION.toMillis()) {
                 synchronized (this) {
                     if (now - windowStart > WINDOW_DURATION.toMillis()) {
-                        count.set(0);
+                        count.set(1);
                         windowStart = now;
+                        return 1;
                     }
                 }
             }

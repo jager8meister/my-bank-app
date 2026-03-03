@@ -1,43 +1,49 @@
 package ru.yandex.practicum.mybankfront.config;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.reactive.function.client.WebClient;
 
-@Slf4j
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final OidcLogoutHandler oidcLogoutHandler;
-    private final CustomOidcLogoutSuccessHandler customOidcLogoutSuccessHandler;
+    @Value("${gateway.url:http://gateway-service:8080}")
+    private String gatewayUrl;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public JwtSessionFilter jwtSessionFilter(WebClient webClient, ObjectMapper objectMapper) {
+        return new JwtSessionFilter(webClient, objectMapper, gatewayUrl);
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtSessionFilter jwtSessionFilter) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/register").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/login", "/register", "/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2Login(oauth2 -> oauth2
-                        .defaultSuccessUrl("/", true)
+                .addFilterBefore(jwtSessionFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(e ->
+                        e.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
                 )
-                .oauth2Client(Customizer.withDefaults())
                 .logout(logout -> logout
-                        .addLogoutHandler(oidcLogoutHandler)
-                        .logoutSuccessHandler(customOidcLogoutSuccessHandler)
                         .logoutUrl("/logout")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
+                        .logoutSuccessUrl("/login?logout")
                 )
-                .csrf(csrf -> csrf.disable());
+                .formLogin(AbstractHttpConfigurer::disable)
+                .csrf(Customizer.withDefaults());
         return http.build();
     }
 }

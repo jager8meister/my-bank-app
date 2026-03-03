@@ -26,12 +26,12 @@ public class SecurityTestUtils {
         Jwt jwt = Jwt.withTokenValue("test-service-token")
                 .header("alg", "RS256")
                 .claim("sub", "microservices-client")
-                .claim("scope", "microservice")
+                .claim("scope", "microservice-scope")
                 .claim("azp", "microservices-client")
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
-        return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice")));
+        return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice-scope")));
     }
 
     public static Jwt createJwt(Map<String, Object> claims) {

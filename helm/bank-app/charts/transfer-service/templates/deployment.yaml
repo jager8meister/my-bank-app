@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transfer-service
+  labels:
+    app: transfer-service
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: transfer-service
+  template:
+    metadata:
+      labels:
+        app: transfer-service
+    spec:
+      initContainers:
+        - name: wait-for-keycloak
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "until wget -qO/dev/null http://keycloak:9090/realms/master 2>/dev/null; do echo Waiting for Keycloak; sleep 3; done; echo Keycloak is ready"]
+      containers:
+        - name: transfer-service
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "Never" }}
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: {{ include "transfer-service.fullname" . }}-config
+            - secretRef:
+                name: {{ include "transfer-service.fullname" . }}-secret
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 60
+            periodSeconds: 30

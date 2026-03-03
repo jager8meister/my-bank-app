@@ -1,10 +1,11 @@
 package ru.yandex.practicum.accounts.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import org.springframework.dao.DataIntegrityViolationException;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
 import ru.yandex.practicum.accounts.dto.CreateAccountRequest;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
@@ -88,18 +89,18 @@ public class AccountService {
         }
         return accountRepository.findByLogin(login)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(login)))
-                .flatMap(account -> {
-                    if (amount > Long.MAX_VALUE - account.getBalance()) {
-                        return Mono.error(new InvalidAmountException("Amount would cause balance overflow"));
-                    }
-                    return accountRepository.incrementBalance(login, amount)
-                            .flatMap(updated -> {
-                                if (updated == 0) {
-                                    return Mono.error(new AccountNotFoundException(login));
-                                }
-                                return getBalance(login);
-                            });
-                })
+                .flatMap(account -> accountRepository.incrementBalance(login, amount)
+                        .flatMap(updated -> {
+                            if (updated == 0) {
+                                return Mono.error(new AccountNotFoundException(login));
+                            }
+                            return getBalance(login);
+                        }))
+                .onErrorMap(
+                        e -> e instanceof DataAccessException && !(e instanceof DataIntegrityViolationException)
+                                && e.getMessage() != null && e.getMessage().contains("overflow"),
+                        e -> new InvalidAmountException("Amount would cause balance overflow")
+                )
                 .flatMap(newBalance -> {
                     OutboxEvent event = new OutboxEvent(null, "ACCOUNT_UPDATED", login,
                             "Положено " + amount + " руб. Новый баланс: " + newBalance + " руб",
@@ -123,7 +124,7 @@ public class AccountService {
                     return getBalance(login);
                 })
                 .flatMap(newBalance -> {
-                    OutboxEvent event = new OutboxEvent(null, "BALANCE_LOW", login,
+                    OutboxEvent event = new OutboxEvent(null, "ACCOUNT_UPDATED", login,
                             "Снято " + amount + " руб. Новый баланс: " + newBalance + " руб",
                             LocalDateTime.now(), false, null);
                     return outboxEventRepository.save(event).thenReturn(newBalance);
@@ -152,6 +153,9 @@ public class AccountService {
                     return accountRepository.incrementBalance(toLogin, amount)
                             .flatMap(recipientUpdated -> {
                                 if (recipientUpdated == 0) {
+                                    // Recipient not found: the @Transactional annotation ensures the entire
+                                    // transaction (including the sender's deduction) is rolled back automatically
+                                    // when this Mono completes with an error. No manual compensating write needed.
                                     return Mono.error(new AccountNotFoundException(toLogin));
                                 }
 

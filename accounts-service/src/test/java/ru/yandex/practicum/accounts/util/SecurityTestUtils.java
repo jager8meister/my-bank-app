@@ -6,7 +6,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 public class SecurityTestUtils {
     public static Authentication createUserAuthentication(String username) {
@@ -34,12 +33,4 @@ public class SecurityTestUtils {
         return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice-scope")));
     }
 
-    public static Jwt createJwt(Map<String, Object> claims) {
-        var builder = Jwt.withTokenValue("test-token")
-                .header("alg", "RS256")
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(3600));
-        claims.forEach(builder::claim);
-        return builder.build();
-    }
 }

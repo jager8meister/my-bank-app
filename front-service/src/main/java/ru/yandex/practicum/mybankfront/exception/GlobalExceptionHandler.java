@@ -1,12 +1,13 @@
 package ru.yandex.practicum.mybankfront.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -23,23 +24,24 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private final AccountService accountService;
-    private final OAuth2AuthorizedClientService authorizedClientService;
 
     @ExceptionHandler({ConstraintViolationException.class, MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
-    public String handleInputValidationException(Exception e, Model model) {
+    public String handleInputValidationException(Exception e, Model model, HttpServletRequest request) {
         log.warn("Input validation error: {}", e.getMessage());
         String errorMessage = extractMessage(e);
-        return loadAccountPage(model, errorMessage);
+        return loadAccountPage(model, errorMessage, request);
     }
 
-    private String loadAccountPage(Model model, String errorMessage) {
+    private String loadAccountPage(Model model, String errorMessage, HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         try {
             if (authentication != null && authentication.isAuthenticated()) {
                 String login = authentication.getName();
-                OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient("keycloak", login);
-                if (client != null) {
-                    String accessToken = client.getAccessToken().getTokenValue();
+                HttpSession httpSession = request.getSession(false);
+                String accessToken = httpSession != null
+                        ? (String) httpSession.getAttribute("ACCESS_TOKEN")
+                        : null;
+                if (accessToken != null) {
                     Map<String, Object> data = accountService.getAccountInfo(login, accessToken).block();
                     if (data != null) {
                         fillModel(model, data);
@@ -69,7 +71,7 @@ public class GlobalExceptionHandler {
         }
         if (e instanceof ConstraintViolationException ex) {
             return ex.getConstraintViolations().stream()
-                    .map(cv -> cv.getMessage())
+                    .map(ConstraintViolation::getMessage)
                     .findFirst()
                     .orElse("Ошибка валидации");
         }
