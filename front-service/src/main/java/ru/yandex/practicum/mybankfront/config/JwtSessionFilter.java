@@ -26,7 +26,9 @@ import java.util.Map;
 public class JwtSessionFilter extends OncePerRequestFilter {
 
     private final WebClient webClient;
+
     private final ObjectMapper objectMapper;
+
     private final String authServiceUrl;
 
     private final HttpSessionSecurityContextRepository contextRepository =

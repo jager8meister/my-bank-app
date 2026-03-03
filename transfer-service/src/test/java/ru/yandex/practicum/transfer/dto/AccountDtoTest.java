@@ -1,10 +1,13 @@
 package ru.yandex.practicum.transfer.dto;
 
 import org.junit.jupiter.api.Test;
+
 import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AccountDtoTest {
+
     @Test
     void shouldCreateAccountDto() {
         AccountDto dto = new AccountDto(

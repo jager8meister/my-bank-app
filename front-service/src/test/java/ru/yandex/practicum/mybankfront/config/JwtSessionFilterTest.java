@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 class JwtSessionFilterTest {
 
     private WebClient webClient;
+
     private JwtSessionFilter filter;
 
     @BeforeEach

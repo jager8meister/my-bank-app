@@ -4,20 +4,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.auth.dto.AuthRequest;
 import ru.yandex.practicum.auth.dto.AuthResponse;
+import ru.yandex.practicum.auth.dto.TokenResponse;
 import ru.yandex.practicum.auth.model.User;
 import ru.yandex.practicum.auth.service.AuthService;
 import ru.yandex.practicum.auth.service.KeycloakAdminService;
 import ru.yandex.practicum.auth.service.RegistrationService;
-
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import ru.yandex.practicum.auth.dto.TokenResponse;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -31,13 +30,13 @@ class AuthControllerTest {
     @Autowired
     private WebTestClient webTestClient;
 
-    @MockBean
+    @MockitoBean
     private AuthService authService;
 
-    @MockBean
+    @MockitoBean
     private RegistrationService registrationService;
 
-    @MockBean
+    @MockitoBean
     private KeycloakAdminService keycloakAdminService;
 
     @Test

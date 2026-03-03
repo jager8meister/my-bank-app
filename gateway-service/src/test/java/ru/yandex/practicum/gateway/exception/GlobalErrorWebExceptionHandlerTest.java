@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GlobalErrorWebExceptionHandlerTest {
 
     private GlobalErrorWebExceptionHandler handler;
+
     private ObjectMapper objectMapper;
 
     @BeforeEach

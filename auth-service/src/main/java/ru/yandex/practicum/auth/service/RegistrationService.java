@@ -22,6 +22,7 @@ public class RegistrationService {
             List.of("USER", "Accounts", "Cash", "Transfer", "Notifications");
 
     private final KeycloakAdminService keycloakAdminService;
+
     private final WebClient webClient;
 
     @Value("${services.accounts.url:http://accounts-service:8081}")

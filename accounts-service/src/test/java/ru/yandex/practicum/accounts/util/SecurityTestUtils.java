@@ -8,8 +8,8 @@ import java.time.Instant;
 import java.util.List;
 
 public class SecurityTestUtils {
-    public static Authentication createUserAuthentication(String username) {
 
+    public static Authentication createUserAuthentication(String username) {
         Jwt jwt = Jwt.withTokenValue("test-token")
                 .header("alg", "RS256")
                 .claim("sub", username)
@@ -32,5 +32,4 @@ public class SecurityTestUtils {
                 .build();
         return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("SCOPE_microservice-scope")));
     }
-
 }

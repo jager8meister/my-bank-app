@@ -10,13 +10,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
@@ -37,12 +40,15 @@ class AccountServiceTest {
 
     @Mock
     private WebClient.ResponseSpec responseSpec;
+
     private AccountService accountService;
+
     @BeforeEach
     void setUp() {
         accountService = new AccountService(webClient);
         ReflectionTestUtils.setField(accountService, "gatewayUrl", "http://localhost:8080");
     }
+
     @Test
     void shouldGetAccountInfoSuccessfully() {
         Map<String, Object> accountData = Map.of(
@@ -64,6 +70,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleGetAccountInfoError() {
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
@@ -82,6 +89,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldUpdateAccountSuccessfully() {
         Map<String, Object> updatedData = Map.of(
@@ -107,6 +115,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleUpdateAccountError() {
         when(webClient.put()).thenReturn(requestBodyUriSpec);
@@ -132,6 +141,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldProcessCashSuccessWithoutInfoOrErrors() {
         Map<String, Object> cashResponse = Map.of(
@@ -164,6 +174,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleProcessCashError() {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
@@ -184,6 +195,7 @@ class AccountServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleTransferError() {
         when(webClient.post()).thenReturn(requestBodyUriSpec);

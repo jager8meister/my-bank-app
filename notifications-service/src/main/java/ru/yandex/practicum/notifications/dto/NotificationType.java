@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
         "BALANCE_LOW — account balance fell below threshold, " +
         "ACCOUNT_UPDATED — account details were changed")
 public enum NotificationType {
+
     TRANSFER_SENT,
     TRANSFER_RECEIVED,
     BALANCE_LOW,

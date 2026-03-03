@@ -19,7 +19,9 @@ import ru.yandex.practicum.auth.repository.UserRepository;
 public class DataInitializer {
 
     private final UserRepository userRepository;
+
     private final PasswordEncoder passwordEncoder;
+
     private final TransactionalOperator transactionalOperator;
 
     @EventListener(ApplicationReadyEvent.class)

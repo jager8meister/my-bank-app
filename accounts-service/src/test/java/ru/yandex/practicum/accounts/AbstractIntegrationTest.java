@@ -7,6 +7,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 public abstract class AbstractIntegrationTest {
@@ -20,6 +21,7 @@ public abstract class AbstractIntegrationTest {
             .withUsername("testuser")
             .withPassword("testpass")
             .withInitScript("test-schema.sql");
+
     @DynamicPropertySource
     static void registerPgProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.r2dbc.url", () -> String.format(

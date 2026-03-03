@@ -7,5 +7,6 @@ import ru.yandex.practicum.auth.model.User;
 
 @Repository
 public interface UserRepository extends R2dbcRepository<User, Long> {
+
     Mono<User> findByLogin(String login);
 }

@@ -16,6 +16,7 @@ import ru.yandex.practicum.auth.repository.UserRepository;
 public class AuthService {
 
     private final UserRepository userRepository;
+
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)

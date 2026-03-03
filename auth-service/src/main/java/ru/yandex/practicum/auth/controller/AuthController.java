@@ -38,7 +38,9 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+
     private final RegistrationService registrationService;
+
     private final KeycloakAdminService keycloakAdminService;
 
     @Operation(

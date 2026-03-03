@@ -7,14 +7,18 @@ import reactor.test.StepVerifier;
 import ru.yandex.practicum.notifications.dto.NotificationRequestDto;
 import ru.yandex.practicum.notifications.dto.NotificationResponseDto;
 import ru.yandex.practicum.notifications.dto.NotificationType;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class NotificationServiceTest {
+
     private NotificationService notificationService;
+
     @BeforeEach
     void setUp() {
         notificationService = new NotificationService();
     }
+
     @Test
     void shouldSendNotificationSuccessfully() {
         NotificationRequestDto request = new NotificationRequestDto(
@@ -31,6 +35,7 @@ class NotificationServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleTransferSentNotification() {
         NotificationRequestDto request = new NotificationRequestDto(
@@ -46,6 +51,7 @@ class NotificationServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleTransferReceivedNotification() {
         NotificationRequestDto request = new NotificationRequestDto(
@@ -61,6 +67,7 @@ class NotificationServiceTest {
                 })
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleAccountUpdatedNotification() {
         NotificationRequestDto request = new NotificationRequestDto(
@@ -73,6 +80,7 @@ class NotificationServiceTest {
                 .assertNext(response -> assertThat(response.success()).isTrue())
                 .verifyComplete();
     }
+
     @Test
     void shouldHandleBalanceLowNotification() {
         NotificationRequestDto request = new NotificationRequestDto(

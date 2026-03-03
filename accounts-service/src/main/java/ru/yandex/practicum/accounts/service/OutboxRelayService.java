@@ -14,6 +14,7 @@ import ru.yandex.practicum.accounts.repository.OutboxEventRepository;
 public class OutboxRelayService {
 
     private final OutboxEventRepository outboxEventRepository;
+
     private final NotificationClient notificationClient;
 
     @Scheduled(fixedDelay = 5000)

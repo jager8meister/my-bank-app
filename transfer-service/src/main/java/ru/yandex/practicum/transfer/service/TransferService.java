@@ -23,6 +23,7 @@ import java.util.Map;
 public class TransferService {
 
     private final WebClient webClient;
+
     private final ObjectMapper objectMapper;
 
     @Value("${services.accounts.host:accounts-service}")
@@ -97,5 +98,7 @@ public class TransferService {
         return "Transfer failed: " + e.getMessage();
     }
 
-    record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {}
+    record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {
+
+    }
 }

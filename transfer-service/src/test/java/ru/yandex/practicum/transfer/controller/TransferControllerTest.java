@@ -3,22 +3,25 @@ package ru.yandex.practicum.transfer.controller;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.transfer.config.TestSecurityConfig;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.service.TransferService;
+
 import java.time.Instant;
 import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
 @WebFluxTest(
         controllers = TransferController.class,
         excludeAutoConfiguration = {
@@ -32,8 +35,9 @@ class TransferControllerTest {
     @Autowired
     private WebTestClient webTestClient;
 
-    @MockBean
+    @MockitoBean
     private TransferService transferService;
+
     @Test
     void shouldTransferMoneyForAuthorizedUser() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 500L);
@@ -54,6 +58,7 @@ class TransferControllerTest {
                 .jsonPath("$.senderBalance").isEqualTo(4500)
                 .jsonPath("$.recipientBalance").isEqualTo(5500);
     }
+
     @Test
     void shouldRejectTransferFromDifferentAccount() {
         TransferRequest request = new TransferRequest("petrov", "sidorov", 500L);
@@ -68,6 +73,7 @@ class TransferControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+
     @Test
     void shouldAllowServiceAccountToTransferFromAnyAccount() {
         TransferRequest request = new TransferRequest("petrov", "sidorov", 500L);
@@ -85,6 +91,7 @@ class TransferControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true);
     }
+
     @Test
     void shouldHandleTransferFailure() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
@@ -103,6 +110,7 @@ class TransferControllerTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.message").isEqualTo("Insufficient funds");
     }
+
     @Test
     void shouldHandleInvalidRequest() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", -100L);

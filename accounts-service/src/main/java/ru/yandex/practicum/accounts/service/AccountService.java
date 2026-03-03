@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+
     private final OutboxEventRepository outboxEventRepository;
 
     @Transactional(readOnly = true)

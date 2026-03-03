@@ -22,6 +22,7 @@ import java.util.Map;
 public class AccountService {
 
     private final WebClient webClient;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${gateway.url:http://localhost:8080}")

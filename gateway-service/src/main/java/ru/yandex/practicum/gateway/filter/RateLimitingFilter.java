@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitingFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitingFilter.class);
+
     private static final int MAX_REQUESTS_PER_MINUTE = 100;
 
     private static final Duration WINDOW_DURATION = Duration.ofMinutes(1);
@@ -59,6 +60,7 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE + 1;
     }
+
     private static class RequestCounter {
 
         private final AtomicInteger count = new AtomicInteger(0);

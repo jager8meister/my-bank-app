@@ -41,7 +41,9 @@ class TransferServiceWebClientTest {
     private TransferService transferService;
 
     private WebClient.RequestBodyUriSpec requestBodyUriSpec;
+
     private WebClient.RequestBodySpec requestBodySpec;
+
     private WebClient.ResponseSpec responseSpec;
 
     @BeforeEach

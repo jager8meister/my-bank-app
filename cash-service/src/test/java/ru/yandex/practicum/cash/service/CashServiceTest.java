@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CashServiceTest {
 
     private WireMockServer wireMockServer;
+
     private CashService cashService;
 
     @BeforeEach
