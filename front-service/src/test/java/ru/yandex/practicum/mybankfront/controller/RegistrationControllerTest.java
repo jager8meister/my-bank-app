@@ -44,16 +44,12 @@ class RegistrationControllerTest {
     @MockBean
     private RegistrationService registrationService;
 
-    // Required by GlobalExceptionHandler which is a @ControllerAdvice picked up by @WebMvcTest
     @MockBean
     private AccountService accountService;
 
     @MockBean
     private WebClient webClient;
 
-    // -----------------------------------------------------------------------
-    // Inner security config: permits /register publicly, disables CSRF
-    // -----------------------------------------------------------------------
     @TestConfiguration
     @EnableWebSecurity
     static class RegistrationTestSecurityConfig {
@@ -70,9 +66,6 @@ class RegistrationControllerTest {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Helper: perform POST /register and complete async dispatch
-    // -----------------------------------------------------------------------
     private MvcResult performRegisterPost(String login, String password, String confirmPassword,
                                           String name, String birthdate) throws Exception {
         MvcResult asyncResult = mockMvc.perform(post("/register")
@@ -87,10 +80,6 @@ class RegistrationControllerTest {
                 .andReturn();
         return mockMvc.perform(asyncDispatch(asyncResult)).andReturn();
     }
-
-    // -----------------------------------------------------------------------
-    // Tests
-    // -----------------------------------------------------------------------
 
     @Test
     void shouldReturnRegisterTemplateOnGet() throws Exception {
@@ -123,7 +112,7 @@ class RegistrationControllerTest {
         MvcResult asyncResult = mockMvc.perform(post("/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("login", "ab")  // only 2 chars — too short (min 3)
+                        .param("login", "ab")
                         .param("password", "password123")
                         .param("confirmPassword", "password123")
                         .param("name", "Иван Иванов")
@@ -141,7 +130,7 @@ class RegistrationControllerTest {
 
     @Test
     void shouldReturnRegisterViewWithErrorOnTooLongLogin() throws Exception {
-        String longLogin = "a".repeat(21); // 21 chars — exceeds max 20
+        String longLogin = "a".repeat(21);
 
         MvcResult asyncResult = mockMvc.perform(post("/register")
                         .with(csrf())
@@ -167,7 +156,7 @@ class RegistrationControllerTest {
         MvcResult asyncResult = mockMvc.perform(post("/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("login", "Ivan123")  // uppercase — invalid
+                        .param("login", "Ivan123")
                         .param("password", "password123")
                         .param("confirmPassword", "password123")
                         .param("name", "Иван Иванов")
@@ -210,7 +199,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("login", "ivanov")
-                        .param("password", "abc")  // only 3 chars — too short (min 6)
+                        .param("password", "abc")
                         .param("confirmPassword", "abc")
                         .param("name", "Иван Иванов")
                         .param("birthdate", "1990-01-15"))
@@ -227,7 +216,6 @@ class RegistrationControllerTest {
 
     @Test
     void shouldReturnRegisterViewWithErrorWhenUnder18() throws Exception {
-        // Use a birthdate that makes the user under 18
         String recentBirthdate = java.time.LocalDate.now().minusYears(17).toString();
 
         MvcResult asyncResult = mockMvc.perform(post("/register")
@@ -257,7 +245,7 @@ class RegistrationControllerTest {
                         .param("login", "ivanov")
                         .param("password", "password123")
                         .param("confirmPassword", "password123")
-                        .param("name", "   ")  // blank name
+                        .param("name", "   ")
                         .param("birthdate", "1990-01-15"))
                 .andExpect(request().asyncStarted())
                 .andReturn();
@@ -297,7 +285,7 @@ class RegistrationControllerTest {
         MvcResult asyncResult = mockMvc.perform(post("/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("login", "ab")  // too short
+                        .param("login", "ab")
                         .param("password", "password123")
                         .param("confirmPassword", "password123")
                         .param("name", "Иван Иванов")

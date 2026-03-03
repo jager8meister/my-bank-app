@@ -41,8 +41,6 @@ class AccountControllerTest {
     @MockBean
     private AccountService accountService;
 
-    // ==================== GET /api/accounts/{login} ====================
-
     @Test
     @DisplayName("GET /api/accounts/{login} - Should return account info for authorized user")
     void shouldReturnAccountInfoForAuthorizedUser() {
@@ -120,8 +118,6 @@ class AccountControllerTest {
                 .expectStatus().isNotFound();
     }
 
-    // ==================== PUT /api/accounts/{login} ====================
-
     @Test
     @DisplayName("PUT /api/accounts/{login} - Should update account for authorized user")
     void shouldUpdateAccountForAuthorizedUser() {
@@ -159,7 +155,6 @@ class AccountControllerTest {
                 "Иван Иванович",
                 LocalDate.of(1990, 1, 15)
         );
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.updateAccount(eq("petrov"), any(UpdateAccountRequest.class)))
                 .thenReturn(Mono.empty());
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
@@ -172,8 +167,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ==================== PUT /api/accounts/{login}/balance ====================
 
     @Test
     @DisplayName("PUT /api/accounts/{login}/balance - Should update balance with microservice auth")
@@ -191,7 +184,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("PUT /api/accounts/{login}/balance - Should reject regular user (403)")
     void shouldRejectRegularUserUpdatingBalance() {
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.updateBalance("ivanov", 10000L)).thenReturn(Mono.empty());
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
@@ -201,8 +193,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ==================== GET /api/accounts/{login}/balance ====================
 
     @Test
     @DisplayName("GET /api/accounts/{login}/balance - Should return balance")
@@ -222,7 +212,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("GET /api/accounts/{login}/balance - Should reject other user (403)")
     void shouldRejectOtherUserGettingBalance() {
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.getBalance("petrov")).thenReturn(Mono.just(3000L));
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
@@ -232,8 +221,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ==================== POST /api/accounts/{login}/deposit ====================
 
     @Test
     @DisplayName("POST /api/accounts/{login}/deposit - Should deposit cash")
@@ -253,7 +240,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("POST /api/accounts/{login}/deposit - Should reject deposit for other user (403)")
     void shouldRejectDepositForOtherUser() {
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.depositCash("petrov", 500L)).thenReturn(Mono.just(3500L));
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
@@ -275,8 +261,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
-
-    // ==================== POST /api/accounts/{login}/withdraw ====================
 
     @Test
     @DisplayName("POST /api/accounts/{login}/withdraw - Should withdraw cash")
@@ -310,7 +294,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("POST /api/accounts/{login}/withdraw - Should reject withdraw for other user (403)")
     void shouldRejectWithdrawForOtherUser() {
-        // stub needed: mock must not return null for the method eagerly evaluated in .then()
         when(accountService.withdrawCash("petrov", 500L)).thenReturn(Mono.just(2500L));
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
@@ -320,8 +303,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ==================== POST /api/accounts/register ====================
 
     @Test
     @DisplayName("POST /api/accounts/register - Should create account and return 201")
@@ -363,7 +344,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("POST /api/accounts/register - Should return 400 for invalid request body (blank name)")
     void shouldReturn400ForInvalidRequestBody() {
-        // name is blank - violates @NotBlank
         String invalidJson = "{\"login\":\"newuser\",\"name\":\"\",\"birthdate\":\"1995-06-15\"}";
         webTestClient
                 .post()
@@ -377,7 +357,6 @@ class AccountControllerTest {
     @Test
     @DisplayName("POST /api/accounts/register - Should return 400 for under-age user")
     void shouldReturn400ForUnderAgeUser() {
-        // birthdate too recent (< 18 years ago)
         String invalidJson = "{\"login\":\"younguser\",\"name\":\"Young User\",\"birthdate\":\"2015-01-01\"}";
         webTestClient
                 .post()
@@ -387,8 +366,6 @@ class AccountControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
-
-    // ==================== POST /api/accounts/internal/transfer ====================
 
     @Test
     @DisplayName("POST /api/accounts/internal/transfer - Should transfer money with microservice auth")

@@ -38,10 +38,6 @@ class AuthServiceTest {
         ivanov = new User(1L, "ivanov", "hashed_password", "USER");
     }
 
-    // -------------------------------------------------------------------------
-    // authenticate
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("authenticate — correct credentials → AuthResponse(success=true)")
     void authenticate_correctCredentials_returnsSuccess() {
@@ -94,10 +90,6 @@ class AuthServiceTest {
                 })
                 .verifyComplete();
     }
-
-    // -------------------------------------------------------------------------
-    // validateUser
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("validateUser — user exists → returns user")

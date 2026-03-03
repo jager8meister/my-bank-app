@@ -61,21 +61,18 @@ class RateLimitingFilterTest {
 
     @Test
     void filter_returns429_whenLimitExceeded() throws Exception {
-        // Inject a counter that is already at MAX (100) for a specific IP
         Field countersField = RateLimitingFilter.class.getDeclaredField("requestCounters");
         countersField.setAccessible(true);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> counters = (Map<String, Object>) countersField.get(filter);
 
-        // Use the inner RequestCounter via reflection — must setAccessible on constructor
         Class<?> counterClass = Class.forName(
                 "ru.yandex.practicum.gateway.filter.RateLimitingFilter$RequestCounter");
         Constructor<?> ctor = counterClass.getDeclaredConstructor();
         ctor.setAccessible(true);
         Object counter = ctor.newInstance();
 
-        // Set count to 100 via AtomicInteger field
         Field countField = counterClass.getDeclaredField("count");
         countField.setAccessible(true);
         AtomicInteger atomicCount = (AtomicInteger) countField.get(counter);
@@ -101,7 +98,6 @@ class RateLimitingFilterTest {
 
     @Test
     void filter_resetsLimit_afterTimeWindowExpires() throws Exception {
-        // Inject a counter whose windowStart is in the past (> 1 minute ago)
         Field countersField = RateLimitingFilter.class.getDeclaredField("requestCounters");
         countersField.setAccessible(true);
 
@@ -114,7 +110,6 @@ class RateLimitingFilterTest {
         ctor.setAccessible(true);
         Object counter = ctor.newInstance();
 
-        // Set count to 100 and windowStart to 2 minutes ago
         Field countField = counterClass.getDeclaredField("count");
         countField.setAccessible(true);
         AtomicInteger atomicCount = (AtomicInteger) countField.get(counter);
@@ -122,7 +117,6 @@ class RateLimitingFilterTest {
 
         Field windowStartField = counterClass.getDeclaredField("windowStart");
         windowStartField.setAccessible(true);
-        // 2 minutes in the past
         windowStartField.set(counter, System.currentTimeMillis() - 120_000L);
 
         counters.put("10.0.0.1", counter);
@@ -138,7 +132,6 @@ class RateLimitingFilterTest {
         StepVerifier.create(result)
                 .verifyComplete();
 
-        // After window reset, count is 1, which is <= 100, so chain should be called
         verify(chain, times(1)).filter(any());
         assertThat(exchange.getResponse().getStatusCode()).isNotEqualTo(HttpStatus.TOO_MANY_REQUESTS);
     }

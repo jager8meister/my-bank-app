@@ -25,10 +25,6 @@ class GlobalExceptionHandlerTest {
         handler = new GlobalExceptionHandler();
     }
 
-    // -----------------------------------------------------------------------
-    // InsufficientFundsException → 400
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("InsufficientFundsException → 400 Bad Request")
     void shouldReturn400ForInsufficientFundsException() {
@@ -47,10 +43,6 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
-
-    // -----------------------------------------------------------------------
-    // CashOperationException → 400
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("CashOperationException → 400 Bad Request")
@@ -87,10 +79,6 @@ class GlobalExceptionHandlerTest {
                 .verifyComplete();
     }
 
-    // -----------------------------------------------------------------------
-    // UnauthorizedException → 401
-    // -----------------------------------------------------------------------
-
     @Test
     @DisplayName("UnauthorizedException → 401 Unauthorized")
     void shouldReturn401ForUnauthorizedException() {
@@ -109,10 +97,6 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
-
-    // -----------------------------------------------------------------------
-    // ForbiddenException → 403
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("ForbiddenException → 403 Forbidden")
@@ -133,10 +117,6 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
-
-    // -----------------------------------------------------------------------
-    // Response body structure validation
-    // -----------------------------------------------------------------------
 
     @Test
     @DisplayName("Error response always contains timestamp field")

@@ -71,7 +71,6 @@ class NotificationControllerSecurityTest {
 
     @Test
     void postNotification_withJwtButWrongScope_returns403() {
-        // mockJwt() with no authorities — authenticated but lacks SCOPE_microservice-scope
         webTestClient
                 .mutateWith(mockJwt())
                 .post()
@@ -85,7 +84,7 @@ class NotificationControllerSecurityTest {
     @Test
     void postNotification_withInvalidBody_emptyRecipient_returns400() {
         NotificationRequestDto invalidRequest = new NotificationRequestDto(
-                "",           // blank recipient — @NotBlank violation
+                "",
                 "Some message",
                 NotificationType.ACCOUNT_UPDATED
         );
@@ -108,7 +107,7 @@ class NotificationControllerSecurityTest {
     void postNotification_withInvalidBody_emptyMessage_returns400() {
         NotificationRequestDto invalidRequest = new NotificationRequestDto(
                 "ivanov",
-                "",           // blank message — @NotBlank violation
+                "",
                 NotificationType.TRANSFER_RECEIVED
         );
         when(notificationService.sendNotification(any(NotificationRequestDto.class)))
@@ -128,7 +127,6 @@ class NotificationControllerSecurityTest {
 
     @Test
     void postNotification_withInvalidBody_nullType_returns400() {
-        // Raw JSON with null type — triggers @NotNull violation on NotificationType
         String jsonBody = "{\"recipient\":\"ivanov\",\"message\":\"Test\",\"type\":null}";
 
         when(notificationService.sendNotification(any(NotificationRequestDto.class)))

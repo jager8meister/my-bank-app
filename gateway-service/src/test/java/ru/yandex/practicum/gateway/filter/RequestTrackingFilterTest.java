@@ -54,7 +54,6 @@ class RequestTrackingFilterTest {
         ServerWebExchange capturedExchange = exchangeCaptor.getValue();
         String requestId = capturedExchange.getRequest().getHeaders().getFirst("X-Request-ID");
         assertThat(requestId).isNotNull().isNotEmpty();
-        // Should be a valid UUID format
         assertThat(requestId).matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     }
 
@@ -110,7 +109,6 @@ class RequestTrackingFilterTest {
         ServerWebExchange capturedExchange = exchangeCaptor.getValue();
         String requestTime = capturedExchange.getRequest().getHeaders().getFirst("X-Request-Time");
         assertThat(requestTime).isNotNull().isNotEmpty();
-        // Should be a valid timestamp (parseable as long)
         assertThat(Long.parseLong(requestTime)).isPositive();
     }
 

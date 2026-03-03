@@ -24,10 +24,6 @@ class GlobalExceptionHandlerTest {
         handler = new GlobalExceptionHandler();
     }
 
-    // -------------------------------------------------------------------------
-    // InsufficientFundsException → 400
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("InsufficientFundsException → HTTP 400 with message")
     void shouldReturn400_forInsufficientFundsException() {
@@ -45,10 +41,6 @@ class GlobalExceptionHandlerTest {
                 .verifyComplete();
     }
 
-    // -------------------------------------------------------------------------
-    // InvalidTransferException → 400
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("InvalidTransferException → HTTP 400 with message")
     void shouldReturn400_forInvalidTransferException() {
@@ -65,10 +57,6 @@ class GlobalExceptionHandlerTest {
                 .verifyComplete();
     }
 
-    // -------------------------------------------------------------------------
-    // TransferException → 400
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("TransferException → HTTP 400 with message")
     void shouldReturn400_forTransferException() {
@@ -84,10 +72,6 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
-
-    // -------------------------------------------------------------------------
-    // UnauthorizedException → 401
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("UnauthorizedException → HTTP 401 with message")
@@ -106,10 +90,6 @@ class GlobalExceptionHandlerTest {
                 .verifyComplete();
     }
 
-    // -------------------------------------------------------------------------
-    // ForbiddenException → 403
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("ForbiddenException → HTTP 403 with message")
     void shouldReturn403_forForbiddenException() {
@@ -127,10 +107,6 @@ class GlobalExceptionHandlerTest {
                 .verifyComplete();
     }
 
-    // -------------------------------------------------------------------------
-    // Generic Exception → 500
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("Unexpected exception → HTTP 500")
     void shouldReturn500_forGenericException() {
@@ -145,10 +121,6 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
-
-    // -------------------------------------------------------------------------
-    // Error response always contains timestamp
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Error response always contains timestamp field")

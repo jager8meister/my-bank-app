@@ -33,8 +33,6 @@ public class SecurityTestConfigWithJwt {
         http
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/**").permitAll()
-                        // enforce scope at the filter-chain level so that 403 is returned
-                        // correctly even when GlobalExceptionHandler has a catch-all handler
                         .pathMatchers("/api/notifications").hasAuthority("SCOPE_microservice-scope")
                         .anyExchange().authenticated()
                 )

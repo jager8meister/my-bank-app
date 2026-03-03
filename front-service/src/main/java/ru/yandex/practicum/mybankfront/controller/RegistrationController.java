@@ -99,7 +99,6 @@ public class RegistrationController {
                     String errorMessage;
                     if (e instanceof WebClientResponseException webEx) {
                         String body = webEx.getResponseBodyAsString();
-                        // Try to extract "error" field from JSON like {"error":"Логин уже занят"}
                         if (body.contains("\"error\"")) {
                             errorMessage = body.replaceAll(".*\"error\"\\s*:\\s*\"([^\"]+)\".*", "$1");
                         } else {

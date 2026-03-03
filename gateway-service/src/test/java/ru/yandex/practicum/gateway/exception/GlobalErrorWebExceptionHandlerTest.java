@@ -103,7 +103,6 @@ class GlobalErrorWebExceptionHandlerTest {
         StepVerifier.create(handler.handle(exchange, ex))
                 .verifyComplete();
 
-        // Verify JSON content type
         assertThat(exchange.getResponse().getHeaders().getContentType())
                 .isEqualTo(MediaType.APPLICATION_JSON);
 
@@ -144,7 +143,6 @@ class GlobalErrorWebExceptionHandlerTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        // NullPointerException has no message
         RuntimeException ex = new RuntimeException((String) null);
 
         StepVerifier.create(handler.handle(exchange, ex))
@@ -163,7 +161,6 @@ class GlobalErrorWebExceptionHandlerTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        // Commit the response first
         exchange.getResponse().setComplete().block();
 
         RuntimeException ex = new RuntimeException("Already committed");

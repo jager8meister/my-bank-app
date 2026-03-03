@@ -68,7 +68,6 @@ class NotificationServiceExtendedTest {
 
         Mono<NotificationResponseDto> result = notificationService.sendNotification(request);
 
-        // Subscribe to trigger the reactive chain
         StepVerifier.create(result)
                 .assertNext(response -> assertThat(response.success()).isTrue())
                 .verifyComplete();

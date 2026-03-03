@@ -153,9 +153,6 @@ public class AccountService {
                     return accountRepository.incrementBalance(toLogin, amount)
                             .flatMap(recipientUpdated -> {
                                 if (recipientUpdated == 0) {
-                                    // Recipient not found: the @Transactional annotation ensures the entire
-                                    // transaction (including the sender's deduction) is rolled back automatically
-                                    // when this Mono completes with an error. No manual compensating write needed.
                                     return Mono.error(new AccountNotFoundException(toLogin));
                                 }
 
