@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.auth.dto.RegistrationRequest;
+import ru.yandex.practicum.auth.exception.UserAlreadyExistsException;
 
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class RegistrationService {
                 .flatMap(adminToken -> keycloakAdminService.userExists(adminToken, request.login())
                         .flatMap(exists -> {
                             if (exists) {
-                                return Mono.error(new RuntimeException("Логин уже занят"));
+                                return Mono.error(new UserAlreadyExistsException(request.login()));
                             }
                             return keycloakAdminService.createUser(adminToken, request.login())
                                     .flatMap(userId ->

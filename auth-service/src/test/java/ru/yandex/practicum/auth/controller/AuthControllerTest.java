@@ -16,7 +16,11 @@ import ru.yandex.practicum.auth.service.AuthService;
 import ru.yandex.practicum.auth.service.KeycloakAdminService;
 import ru.yandex.practicum.auth.service.RegistrationService;
 
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import ru.yandex.practicum.auth.dto.TokenResponse;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(controllers = AuthController.class)
@@ -35,10 +39,6 @@ class AuthControllerTest {
 
     @MockBean
     private KeycloakAdminService keycloakAdminService;
-
-    // -------------------------------------------------------------------------
-    // POST /api/auth/login
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("POST /api/auth/login — valid credentials → 200 with authenticated=true")
@@ -135,10 +135,6 @@ class AuthControllerTest {
                 .expectStatus().isBadRequest();
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/auth/validate/{login}
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("GET /api/auth/validate/{login} — user exists → 200 with user data")
     void validate_userExists_returns200() {
@@ -167,5 +163,74 @@ class AuthControllerTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/token — valid credentials → 200 with token response")
+    void getToken_validCredentials_returns200WithTokenResponse() {
+        TokenResponse tokenResponse = new TokenResponse("access-token-xyz", "refresh-token-xyz", 300);
+        when(keycloakAdminService.getUserToken(anyString(), anyString()))
+                .thenReturn(Mono.just(tokenResponse));
+
+        webTestClient
+                .post()
+                .uri("/api/auth/token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new AuthRequest("ivanov", "password"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.access_token").isEqualTo("access-token-xyz")
+                .jsonPath("$.refresh_token").isEqualTo("refresh-token-xyz")
+                .jsonPath("$.expires_in").isEqualTo(300);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/token — invalid credentials → 401")
+    void getToken_invalidCredentials_returns401() {
+        when(keycloakAdminService.getUserToken(anyString(), anyString()))
+                .thenReturn(Mono.error(WebClientResponseException.create(401, "Unauthorized", null, null, null)));
+
+        webTestClient
+                .post()
+                .uri("/api/auth/token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new AuthRequest("ivanov", "wrongpass"))
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("Неверный логин или пароль");
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh — valid token → 200 with new token response")
+    void refreshToken_validToken_returns200() {
+        TokenResponse tokenResponse = new TokenResponse("new-access-token", "new-refresh-token", 300);
+        when(keycloakAdminService.refreshUserToken(anyString()))
+                .thenReturn(Mono.just(tokenResponse));
+
+        webTestClient
+                .post()
+                .uri("/api/auth/refresh?refreshToken=valid-refresh-token")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.access_token").isEqualTo("new-access-token")
+                .jsonPath("$.refresh_token").isEqualTo("new-refresh-token");
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh — invalid/expired token → 401")
+    void refreshToken_invalidToken_returns401() {
+        when(keycloakAdminService.refreshUserToken(anyString()))
+                .thenReturn(Mono.error(new RuntimeException("Token expired")));
+
+        webTestClient
+                .post()
+                .uri("/api/auth/refresh?refreshToken=expired-token")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("Сессия истекла, войдите снова");
     }
 }

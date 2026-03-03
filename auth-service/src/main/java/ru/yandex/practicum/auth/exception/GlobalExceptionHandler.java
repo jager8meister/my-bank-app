@@ -22,12 +22,15 @@ public class GlobalExceptionHandler {
         return Mono.just(Map.of("error", message));
     }
 
-    @ExceptionHandler(RuntimeException.class)
+    @ExceptionHandler(UserAlreadyExistsException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public Mono<Map<String, String>> handleConflict(RuntimeException ex) {
-        if (ex.getMessage() != null && ex.getMessage().contains("Логин уже занят")) {
-            return Mono.just(Map.of("error", ex.getMessage()));
-        }
+    public Mono<Map<String, String>> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+        return Mono.just(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Mono<Map<String, String>> handleRuntimeException(RuntimeException ex) {
         return Mono.just(Map.of("error", "Registration failed: " + ex.getMessage()));
     }
 
