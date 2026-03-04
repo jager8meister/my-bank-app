@@ -21,10 +21,9 @@ public final class AuthorizationUtils {
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             return Mono.error(new UnauthorizedException("Valid JWT authentication required"));
         }
-        for (var authority : jwtAuth.getAuthorities()) {
-            if ("SCOPE_microservice-scope".equals(authority.getAuthority())) {
-                return Mono.empty();
-            }
+        if (jwtAuth.getAuthorities().stream()
+                .anyMatch(a -> "SCOPE_microservice-scope".equals(a.getAuthority()))) {
+            return Mono.empty();
         }
         Jwt jwt = jwtAuth.getToken();
         String preferredUsername = jwt.getClaimAsString("preferred_username");

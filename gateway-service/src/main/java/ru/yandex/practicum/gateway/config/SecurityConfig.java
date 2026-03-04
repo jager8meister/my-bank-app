@@ -18,6 +18,8 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers("/login/**", "/oauth2/**").permitAll()
                         .pathMatchers("/api/accounts/register").permitAll()
+                        .pathMatchers("/api/auth/register").permitAll()
+                        .pathMatchers("/api/auth/token", "/api/auth/refresh").permitAll()
                         .pathMatchers("/api/**").authenticated()
                         .anyExchange().authenticated()
                 )

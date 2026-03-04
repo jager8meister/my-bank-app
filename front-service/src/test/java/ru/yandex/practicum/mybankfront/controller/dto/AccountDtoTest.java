@@ -6,12 +6,14 @@ import ru.yandex.practicum.mybankfront.dto.AccountDto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AccountDtoTest {
+
     @Test
     void shouldCreateAccountDto() {
         AccountDto dto = new AccountDto("ivanov", "Иван Иванов");
         assertThat(dto.login()).isEqualTo("ivanov");
         assertThat(dto.name()).isEqualTo("Иван Иванов");
     }
+
     @Test
     void shouldCompareAccountDtos() {
         AccountDto dto1 = new AccountDto("ivanov", "Иван Иванов");
@@ -21,6 +23,7 @@ class AccountDtoTest {
         assertThat(dto1).isNotEqualTo(dto3);
         assertThat(dto1.hashCode()).isEqualTo(dto2.hashCode());
     }
+
     @Test
     void shouldConvertToString() {
         AccountDto dto = new AccountDto("ivanov", "Иван Иванов");

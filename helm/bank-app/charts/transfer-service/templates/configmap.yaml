@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "transfer-service.fullname" . }}-config
+  labels:
+    app: transfer-service
+data:
+  TRANSFER_SERVICE_PORT: "8085"
+  ACCOUNTS_SERVICE_HOST: "accounts-service"
+  ACCOUNTS_SERVICE_PORT: "8081"
+  NOTIFICATIONS_SERVICE_HOST: "notifications-service"
+  NOTIFICATIONS_SERVICE_PORT: "8086"
+  KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
+  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}

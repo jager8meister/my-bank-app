@@ -1,0 +1,15 @@
+image: "bank-accounts-service:latest"
+imagePullPolicy: Never
+replicas: 1
+global: {}
+containerPort: 8081
+service:
+  type: ClusterIP
+  port: 8081
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

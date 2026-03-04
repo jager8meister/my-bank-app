@@ -2,6 +2,7 @@ package ru.yandex.practicum.mybankfront.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,11 +16,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountService {
 
     private final WebClient webClient;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${gateway.url:http://localhost:8080}")
@@ -32,13 +35,14 @@ public class AccountService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(map -> (Map<String, Object>) map)
-                .onErrorResume(e -> Mono.just(createErrorResponse(extractErrorMessage(e))));
+                .onErrorResume(e -> {
+                    log.error("Failed to get account info for {}: {}", login, e.getMessage());
+                    return Mono.just(createErrorResponse(extractErrorMessage(e)));
+                });
     }
 
     public Mono<Map<String, Object>> updateAccount(String login, String name, LocalDate birthdate, String accessToken) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("name", name);
-        request.put("birthdate", birthdate);
+        Map<String, Object> request = Map.of("name", name, "birthdate", birthdate);
         return webClient.put()
                 .uri(gatewayUrl + "/api/accounts/" + login)
                 .headers(headers -> headers.setBearerAuth(accessToken))
@@ -46,18 +50,22 @@ public class AccountService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(map -> (Map<String, Object>) map)
-                .onErrorResume(e -> getAccountInfo(login, accessToken)
-                        .map(accountInfo -> {
-                            accountInfo.put("errors", List.of(extractErrorMessage(e)));
-                            return accountInfo;
-                        })
-                        .onErrorResume(fallback -> Mono.just(createErrorResponse(extractErrorMessage(e)))));
+                .onErrorResume(e -> {
+                    log.error("Failed to update account for {}: {}", login, e.getMessage());
+                    return getAccountInfo(login, accessToken)
+                            .map(accountInfo -> {
+                                accountInfo.put("errors", List.of(extractErrorMessage(e)));
+                                return accountInfo;
+                            })
+                            .onErrorResume(fallback -> {
+                                log.error("Failed to reload account info after update error for {}: {}", login, fallback.getMessage());
+                                return Mono.just(createErrorResponse(extractErrorMessage(e)));
+                            });
+                });
     }
 
     public Mono<Map<String, Object>> processCash(String login, long value, CashAction action, String accessToken) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("value", value);
-        request.put("action", action.toString());
+        Map<String, Object> request = Map.of("value", value, "action", action.toString());
         return webClient.post()
                 .uri(gatewayUrl + "/api/cash/" + login)
                 .headers(headers -> headers.setBearerAuth(accessToken))
@@ -80,19 +88,22 @@ public class AccountService {
                     }
                     return getAccountInfo(login, accessToken);
                 })
-                .onErrorResume(e -> getAccountInfo(login, accessToken)
-                        .map(accountInfo -> {
-                            accountInfo.put("errors", List.of(extractErrorMessage(e)));
-                            return accountInfo;
-                        })
-                        .onErrorResume(fallback -> Mono.just(createErrorResponse(extractErrorMessage(e)))));
+                .onErrorResume(e -> {
+                    log.error("Failed to process cash {} for {}: {}", action, login, e.getMessage());
+                    return getAccountInfo(login, accessToken)
+                            .map(accountInfo -> {
+                                accountInfo.put("errors", List.of(extractErrorMessage(e)));
+                                return accountInfo;
+                            })
+                            .onErrorResume(fallback -> {
+                                log.error("Failed to reload account info after cash error for {}: {}", login, fallback.getMessage());
+                                return Mono.just(createErrorResponse(extractErrorMessage(e)));
+                            });
+                });
     }
 
     public Mono<Map<String, Object>> transfer(String login, long value, String toLogin, String accessToken) {
-        Map<String, Object> request = new HashMap<>();
-        request.put("senderLogin", login);
-        request.put("recipientLogin", toLogin);
-        request.put("amount", value);
+        Map<String, Object> request = Map.of("senderLogin", login, "recipientLogin", toLogin, "amount", value);
         return webClient.post()
                 .uri(gatewayUrl + "/api/transfer")
                 .headers(headers -> headers.setBearerAuth(accessToken))
@@ -113,13 +124,19 @@ public class AccountService {
                                 return accountInfo;
                             });
                 })
-                .onErrorResume(e -> getAccountInfo(login, accessToken)
-                        .map(accountInfo -> {
-                            String errorMessage = extractErrorMessage(e);
-                            accountInfo.put("errors", List.of(errorMessage));
-                            return accountInfo;
-                        })
-                        .onErrorResume(fallbackError -> Mono.just(createErrorResponse(extractErrorMessage(e)))));
+                .onErrorResume(e -> {
+                    log.error("Failed to process transfer from {} to {}: {}", login, toLogin, e.getMessage());
+                    return getAccountInfo(login, accessToken)
+                            .map(accountInfo -> {
+                                String errorMessage = extractErrorMessage(e);
+                                accountInfo.put("errors", List.of(errorMessage));
+                                return accountInfo;
+                            })
+                            .onErrorResume(fallbackError -> {
+                                log.error("Failed to reload account info after transfer error for {}: {}", login, fallbackError.getMessage());
+                                return Mono.just(createErrorResponse(extractErrorMessage(e)));
+                            });
+                });
     }
 
     private String extractErrorMessage(Throwable e) {
@@ -129,7 +146,6 @@ public class AccountService {
                 Map<String, Object> errorResponse = objectMapper.readValue(responseBody, Map.class);
                 String message = (String) errorResponse.get("message");
                 if (message != null) {
-                    // Переводим ключевые фразы на русский
                     if (message.toLowerCase().contains("insufficient funds")) {
                         return "Недостаточно средств на счёте";
                     }
@@ -145,7 +161,6 @@ public class AccountService {
                     return message;
                 }
             } catch (Exception ex) {
-                // Если не удалось распарсить JSON, возвращаем исходное сообщение
             }
         }
         return "Ошибка: " + e.getMessage();

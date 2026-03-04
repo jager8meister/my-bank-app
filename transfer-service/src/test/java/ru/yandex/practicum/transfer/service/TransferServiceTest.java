@@ -15,6 +15,7 @@ import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
 import ru.yandex.practicum.transfer.exception.InvalidTransferException;
 import ru.yandex.practicum.transfer.exception.TransferException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -126,8 +127,13 @@ class TransferServiceTest {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+        org.springframework.web.reactive.function.client.WebClientResponseException ex400 =
+                org.springframework.web.reactive.function.client.WebClientResponseException.create(
+                        400, "Bad Request", null,
+                        "{\"message\":\"Insufficient funds\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        java.nio.charset.StandardCharsets.UTF_8);
         when(responseSpec.bodyToMono(any(Class.class)))
-                .thenReturn(Mono.error(new RuntimeException("Insufficient funds")));
+                .thenReturn(Mono.error(ex400));
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .expectError(InsufficientFundsException.class)
@@ -242,7 +248,7 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("Should handle case insensitive insufficient funds error")
+    @DisplayName("Should handle 400 response as insufficient funds error")
     void shouldHandleCaseInsensitiveInsufficientFundsError() {
         TransferRequest request = new TransferRequest("ivanov", "petrov", 10000L);
         WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
@@ -251,8 +257,13 @@ class TransferServiceTest {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestBodySpec);
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+        org.springframework.web.reactive.function.client.WebClientResponseException ex400 =
+                org.springframework.web.reactive.function.client.WebClientResponseException.create(
+                        400, "Bad Request", null,
+                        "{\"message\":\"INSUFFICIENT FUNDS\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        java.nio.charset.StandardCharsets.UTF_8);
         when(responseSpec.bodyToMono(any(Class.class)))
-                .thenReturn(Mono.error(new RuntimeException("INSUFFICIENT FUNDS")));
+                .thenReturn(Mono.error(ex400));
         Mono<TransferResponse> responseMono = transferService.transfer(request);
         StepVerifier.create(responseMono)
                 .expectError(InsufficientFundsException.class)

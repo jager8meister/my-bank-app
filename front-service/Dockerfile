@@ -16,7 +16,7 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN addgroup -S -g 1001 spring && adduser -S -u 1001 spring -G spring
 
 COPY --from=build /workspace/front-service/target/*.jar app.jar
 

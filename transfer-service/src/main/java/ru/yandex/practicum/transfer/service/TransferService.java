@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -22,10 +23,14 @@ import java.util.Map;
 public class TransferService {
 
     private final WebClient webClient;
+
     private final ObjectMapper objectMapper;
 
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
+
+    @Value("${services.accounts.port:8081}")
+    private int accountsServicePort;
 
     public Mono<TransferResponse> transfer(TransferRequest request) {
         log.info("Processing transfer from {} to {} amount {}",
@@ -38,8 +43,9 @@ public class TransferService {
         }
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
-                        .scheme("lb")
+                        .scheme("http")
                         .host(accountsServiceHost)
+                        .port(accountsServicePort)
                         .path("/api/accounts/internal/transfer")
                         .queryParam("from", request.senderLogin())
                         .queryParam("to", request.recipientLogin())
@@ -57,13 +63,22 @@ public class TransferService {
                             result.recipientBalance()
                     );
                 })
-                .onErrorResume(e -> {
-                    log.error("Transfer failed: {}", e.getMessage());
+                .onErrorResume(WebClientResponseException.class, e -> {
+                    log.error("Transfer failed with HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
                     String errorMessage = extractErrorMessage(e);
-                    if (errorMessage != null && errorMessage.toLowerCase().contains("insufficient funds")) {
+                    if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
                         return Mono.error(new InsufficientFundsException(errorMessage));
                     }
+                    if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        return Mono.error(new InvalidTransferException(errorMessage));
+                    }
                     return Mono.error(new TransferException(errorMessage));
+                })
+                .onErrorResume(e -> !(e instanceof InsufficientFundsException)
+                        && !(e instanceof InvalidTransferException)
+                        && !(e instanceof TransferException), e -> {
+                    log.error("Transfer failed unexpectedly: {}", e.getMessage());
+                    return Mono.error(new TransferException("Transfer failed: " + e.getMessage()));
                 });
     }
 
@@ -83,5 +98,7 @@ public class TransferService {
         return "Transfer failed: " + e.getMessage();
     }
 
-    record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {}
+    record TransferResult(Long senderBalance, Long recipientBalance, String senderName, String recipientName) {
+
+    }
 }

@@ -1,0 +1,15 @@
+image: "bank-auth-service:latest"
+imagePullPolicy: Never
+replicas: 1
+global: {}
+containerPort: 8083
+service:
+  type: ClusterIP
+  port: 8083
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -16,10 +16,16 @@ public class OutboxEvent {
 
     @Id
     private Long id;
+
     private String eventType;
+
     private String recipient;
+
     private String message;
+
     private LocalDateTime createdAt;
+
     private boolean processed;
+
     private LocalDateTime processedAt;
 }

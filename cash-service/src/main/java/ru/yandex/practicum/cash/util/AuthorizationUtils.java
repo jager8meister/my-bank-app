@@ -1,7 +1,6 @@
 package ru.yandex.practicum.cash.util;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.cash.exception.ForbiddenException;
@@ -21,13 +20,11 @@ public final class AuthorizationUtils {
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             return Mono.error(new UnauthorizedException("Valid JWT authentication required"));
         }
-        for (var authority : jwtAuth.getAuthorities()) {
-            if ("SCOPE_microservice-scope".equals(authority.getAuthority())) {
-                return Mono.empty();
-            }
+        if (jwtAuth.getAuthorities().stream()
+                .anyMatch(a -> "SCOPE_microservice-scope".equals(a.getAuthority()))) {
+            return Mono.empty();
         }
-        Jwt jwt = jwtAuth.getToken();
-        String preferredUsername = jwt.getClaimAsString("preferred_username");
+        String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
         if (preferredUsername == null || !resourceOwner.equals(preferredUsername)) {
             return Mono.error(new ForbiddenException(errorMessage));
         }

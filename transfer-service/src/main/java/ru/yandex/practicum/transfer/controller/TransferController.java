@@ -1,5 +1,9 @@
 package ru.yandex.practicum.transfer.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +24,22 @@ import ru.yandex.practicum.transfer.util.AuthorizationUtils;
 @RequiredArgsConstructor
 @Validated
 @Slf4j
+@Tag(name = "Transfers", description = "Money transfer operations between accounts")
 public class TransferController {
 
     private final TransferService transferService;
 
+    @Operation(
+            summary = "Execute a money transfer",
+            description = "Transfers the specified amount from the sender's account to the recipient's account. " +
+                    "The authenticated user must be the sender."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transfer completed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request data (e.g., missing fields, non-positive amount)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — authenticated user is not the sender"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — missing or invalid JWT token")
+    })
     @PostMapping
     public Mono<TransferResponse> transfer(
             @RequestBody @Valid TransferRequest request,

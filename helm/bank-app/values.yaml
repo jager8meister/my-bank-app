@@ -1,0 +1,59 @@
+global:
+  postgres:
+    host: postgres
+    port: "5432"
+    db: bankdb
+    user: bankuser
+    password: bankpass
+  keycloak:
+    internalUrl: "http://keycloak:9090"
+    externalUrl: "http://localhost:9090"
+    realm: bank-realm
+    adminUser: admin
+    adminPassword: admin
+  microservicesClientSecret: microservices-secret-key-12345
+  frontClientSecret: front-client-secret-key-67890
+  gatewayClientSecret: gateway-client-secret-key-11111
+  demoUserPassword: password
+
+postgres:
+  image: "postgres:16-alpine"
+  storage: "1Gi"
+
+keycloak:
+  image: "quay.io/keycloak/keycloak:23.0"
+
+accounts-service:
+  image: "my-bank-app-accounts-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+auth-service:
+  image: "my-bank-app-auth-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+cash-service:
+  image: "my-bank-app-cash-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+transfer-service:
+  image: "my-bank-app-transfer-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+notifications-service:
+  image: "my-bank-app-notifications-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+gateway-service:
+  image: "my-bank-app-gateway-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+
+front-service:
+  image: "my-bank-app-front-service:latest"
+  imagePullPolicy: IfNotPresent
+  replicas: 1

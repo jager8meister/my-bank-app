@@ -3,18 +3,22 @@ package ru.yandex.practicum.mybankfront.controller;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.mybankfront.config.TestSecurityConfig;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
 import ru.yandex.practicum.mybankfront.service.AccountService;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -27,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 @WebMvcTest(controllers = MainController.class)
 @Import(TestSecurityConfig.class)
 class MainControllerTest {
@@ -34,15 +39,27 @@ class MainControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private AccountService accountService;
+
+    @MockitoBean
+    private WebClient webClient;
+
+    private MockHttpSession mockSession() {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("ACCESS_TOKEN", "test-access-token");
+        session.setAttribute("TOKEN_EXPIRES_AT", Long.MAX_VALUE);
+        return session;
+    }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldRedirectIndexToAccount() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/").session(mockSession()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/account"));
     }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldGetAccountAndCallService() throws Exception {
@@ -53,10 +70,11 @@ class MainControllerTest {
         );
         when(accountService.getAccountInfo(anyString(), anyString()))
                 .thenReturn(Mono.just(accountData));
-        mockMvc.perform(get("/account"))
+        mockMvc.perform(get("/account").session(mockSession()))
                 .andExpect(request().asyncStarted());
         verify(accountService).getAccountInfo(eq("ivanov"), anyString());
     }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldUpdateAccountAndCallService() throws Exception {
@@ -68,6 +86,7 @@ class MainControllerTest {
         when(accountService.updateAccount(anyString(), anyString(), any(LocalDate.class), anyString()))
                 .thenReturn(Mono.just(updatedData));
         mockMvc.perform(post("/account")
+                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("name", "Иван Петрович Иванов")
@@ -75,6 +94,7 @@ class MainControllerTest {
                 .andExpect(request().asyncStarted());
         verify(accountService).updateAccount(eq("ivanov"), eq("Иван Петрович Иванов"), eq(LocalDate.of(1990, 1, 15)), anyString());
     }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldProcessCashAndCallService() throws Exception {
@@ -86,6 +106,7 @@ class MainControllerTest {
         when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
+                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "500")
@@ -93,6 +114,7 @@ class MainControllerTest {
                 .andExpect(request().asyncStarted());
         verify(accountService).processCash(eq("ivanov"), eq(500L), eq(CashAction.PUT), anyString());
     }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldProcessWithdrawAndCallService() throws Exception {
@@ -104,6 +126,7 @@ class MainControllerTest {
         when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
+                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "500")
@@ -111,6 +134,7 @@ class MainControllerTest {
                 .andExpect(request().asyncStarted());
         verify(accountService).processCash(eq("ivanov"), eq(500L), eq(CashAction.GET), anyString());
     }
+
     @Test
     @WithMockUser(username = "ivanov")
     void shouldTransferMoneyAndCallService() throws Exception {
@@ -122,6 +146,7 @@ class MainControllerTest {
         when(accountService.transfer(anyString(), anyLong(), anyString(), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/transfer")
+                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "100")
@@ -129,11 +154,13 @@ class MainControllerTest {
                 .andExpect(request().asyncStarted());
         verify(accountService).transfer(eq("ivanov"), eq(100L), eq("petrov"), anyString());
     }
+
     @Test
     void shouldRequireAuthenticationForAccount() throws Exception {
         mockMvc.perform(get("/account"))
                 .andExpect(status().isForbidden());
     }
+
     @Test
     void shouldRequireAuthenticationForAccountPost() throws Exception {
         mockMvc.perform(post("/account")
@@ -143,6 +170,7 @@ class MainControllerTest {
                         .param("birthdate", "2000-01-01"))
                 .andExpect(status().isForbidden());
     }
+
     @Test
     void shouldRequireAuthenticationForCash() throws Exception {
         mockMvc.perform(post("/cash")
@@ -152,6 +180,7 @@ class MainControllerTest {
                         .param("action", "PUT"))
                 .andExpect(status().isForbidden());
     }
+
     @Test
     void shouldRequireAuthenticationForTransfer() throws Exception {
         mockMvc.perform(post("/transfer")

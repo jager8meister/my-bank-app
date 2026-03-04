@@ -16,7 +16,9 @@ import java.time.LocalDate;
 public class DataInitializer {
 
     private static final long IVANOV_INITIAL_BALANCE = 100L;
+
     private static final long PETROV_INITIAL_BALANCE = 500L;
+
     private static final long SIDOROV_INITIAL_BALANCE = 1000L;
 
     private final AccountRepository accountRepository;

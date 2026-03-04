@@ -14,6 +14,7 @@ import ru.yandex.practicum.accounts.repository.OutboxEventRepository;
 public class OutboxRelayService {
 
     private final OutboxEventRepository outboxEventRepository;
+
     private final NotificationClient notificationClient;
 
     @Scheduled(fixedDelay = 5000)
@@ -27,6 +28,9 @@ public class OutboxRelayService {
                             log.warn("Failed to relay outbox event {}, will retry later: {}", event.getId(), e.getMessage());
                             return Mono.empty();
                         }))
-                .subscribe();
+                .subscribe(
+                        v -> {},
+                        e -> log.error("Outbox relay pipeline terminated with unexpected error", e)
+                );
     }
 }

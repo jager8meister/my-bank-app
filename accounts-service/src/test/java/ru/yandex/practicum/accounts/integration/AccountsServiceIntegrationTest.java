@@ -4,9 +4,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.accounts.AbstractIntegrationTest;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+
 @DisplayName("Accounts Service Integration Tests")
 class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
 
@@ -28,20 +30,21 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private AccountRepository accountRepository;
 
-    @MockBean
+    @MockitoBean
     private NotificationClient notificationClient;
+
     @BeforeEach
     void setUp() {
         when(notificationClient.sendNotification(anyString(), anyString(), anyString()))
                 .thenReturn(Mono.empty());
     }
+
     @Test
     @DisplayName("Should get account info from database")
     void shouldGetAccountInfoFromDatabase() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .get()
                 .uri("/api/accounts/ivanov")
                 .exchange()
@@ -54,6 +57,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .jsonPath("$.accounts").isArray()
                 .jsonPath("$.accounts.length()").isEqualTo(2);
     }
+
     @Test
     @DisplayName("Should update account in database")
     void shouldUpdateAccountInDatabase() {
@@ -63,8 +67,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
         );
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .put()
                 .uri("/api/accounts/ivanov")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -79,6 +82,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
         assertThat(updatedAccount.getName()).isEqualTo("Иван Иванович Иванов");
         assertThat(updatedAccount.getBirthdate()).isEqualTo(LocalDate.of(1990, 2, 20));
     }
+
     @Test
     @DisplayName("Should deposit cash and update balance in database")
     void shouldDepositCashAndUpdateBalance() {
@@ -87,8 +91,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .map(Account::getBalance)
                 .block();
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .post()
                 .uri("/api/accounts/ivanov/deposit?amount=1000")
                 .exchange()
@@ -100,6 +103,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .block();
         assertThat(newBalance).isEqualTo(initialBalance + 1000L);
     }
+
     @Test
     @DisplayName("Should withdraw cash and update balance in database")
     void shouldWithdrawCashAndUpdateBalance() {
@@ -108,8 +112,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .map(Account::getBalance)
                 .block();
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .post()
                 .uri("/api/accounts/ivanov/withdraw?amount=500")
                 .exchange()
@@ -121,13 +124,13 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .block();
         assertThat(newBalance).isEqualTo(initialBalance - 500L);
     }
+
     @Test
     @DisplayName("Should reject withdrawal with insufficient funds")
     void shouldRejectWithdrawalWithInsufficientFunds() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("sidorov");
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .post()
                 .uri("/api/accounts/sidorov/withdraw?amount=2000")
                 .exchange()
@@ -137,6 +140,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .block();
         assertThat(balance).isEqualTo(1000L);
     }
+
     @Test
     @DisplayName("Should transfer money between accounts in database")
     void shouldTransferMoneyBetweenAccounts() {
@@ -148,8 +152,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .map(Account::getBalance)
                 .block();
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .post()
                 .uri("/api/accounts/transfer?from=ivanov&to=petrov&amount=500")
                 .exchange()
@@ -166,25 +169,25 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
         assertThat(ivanovNewBalance).isEqualTo(ivanovInitialBalance - 500L);
         assertThat(petrovNewBalance).isEqualTo(petrovInitialBalance + 500L);
     }
+
     @Test
     @DisplayName("Should enforce authorization - user can only access own account")
     void shouldEnforceAuthorizationUserCanOnlyAccessOwnAccount() {
         Authentication auth = SecurityTestUtils.createUserAuthentication("ivanov");
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .get()
                 .uri("/api/accounts/petrov")
                 .exchange()
                 .expectStatus().isForbidden();
     }
+
     @Test
     @DisplayName("Should allow service account to access any account")
     void shouldAllowServiceAccountToAccessAnyAccount() {
         Authentication auth = SecurityTestUtils.createServiceAuthentication();
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .get()
                 .uri("/api/accounts/petrov")
                 .exchange()
@@ -192,8 +195,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .expectBody()
                 .jsonPath("$.name").isEqualTo("Петр Петров");
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .get()
                 .uri("/api/accounts/sidorov")
                 .exchange()
@@ -201,13 +203,13 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
                 .expectBody()
                 .jsonPath("$.name").isEqualTo("Сидор Сидоров");
     }
+
     @Test
     @DisplayName("Should return 404 for non-existent account")
     void shouldReturn404ForNonExistentAccount() {
         Authentication auth = SecurityTestUtils.createServiceAuthentication();
         webTestClient
-                .mutateWith(org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers
-                        .mockAuthentication(auth))
+                .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .get()
                 .uri("/api/accounts/nonexistent")
                 .exchange()

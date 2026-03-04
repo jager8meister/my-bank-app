@@ -1,0 +1,292 @@
+{
+  "realm": "bank-realm",
+  "enabled": true,
+  "displayName": "Bank Application Realm",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": true,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Bank application user role"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Bank application admin role"
+      },
+      {
+        "name": "MICROSERVICE",
+        "description": "Microservice to microservice communication role"
+      },
+      {
+        "name": "Accounts",
+        "description": "Access to Accounts Service"
+      },
+      {
+        "name": "Cash",
+        "description": "Access to Cash Service"
+      },
+      {
+        "name": "Transfer",
+        "description": "Access to Transfer Service"
+      },
+      {
+        "name": "Notifications",
+        "description": "Access to Notifications Service"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "microservices-client",
+      "name": "Microservices Client Credentials",
+      "description": "Client for M2M (microservice to microservice) communication using Client Credentials Flow",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "microservices-secret-key-12345",
+      "redirectUris": [],
+      "webOrigins": [],
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "client.secret.creation.time": "1704067200"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "microservice-scope"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "front-client",
+      "name": "Frontend Application Client",
+      "description": "Client for user authentication using Authorization Code Flow",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "front-client-secret-key-67890",
+      "redirectUris": [
+        "http://localhost:8084/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:8084"
+      ],
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "1800",
+        "client.secret.creation.time": "1704067200",
+        "post.logout.redirect.uris": "http://localhost:8084"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "gateway-client",
+      "name": "API Gateway Client",
+      "description": "Client for API Gateway to validate and relay tokens",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "gateway-client-secret-key-11111",
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "microservice-scope",
+      "description": "Scope for microservice-to-microservice communication",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "profile",
+      "description": "OpenID Connect built-in scope: profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${profileScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "description": "OpenID Connect scope for add user roles to the access token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "role_list",
+    "profile",
+    "email",
+    "roles",
+    "web-origins",
+    "acr"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "address",
+    "phone",
+    "microprofile-jwt"
+  ],
+  "users": [
+    {
+      "username": "ivanov",
+      "firstName": "Иван",
+      "lastName": "Иванов",
+      "email": "ivanov@bank.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "password", "temporary": false}],
+      "realmRoles": ["USER", "Accounts", "Cash", "Transfer", "Notifications"]
+    },
+    {
+      "username": "petrov",
+      "firstName": "Петр",
+      "lastName": "Петров",
+      "email": "petrov@bank.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "password", "temporary": false}],
+      "realmRoles": ["USER", "Accounts", "Cash", "Transfer", "Notifications"]
+    },
+    {
+      "username": "sidorov",
+      "firstName": "Сидор",
+      "lastName": "Сидоров",
+      "email": "sidorov@bank.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "password", "temporary": false}],
+      "realmRoles": ["USER", "Accounts", "Cash", "Transfer", "Notifications"]
+    },
+    {
+      "username": "service-account-microservices-client",
+      "enabled": true,
+      "serviceAccountClientId": "microservices-client",
+      "realmRoles": ["MICROSERVICE"]
+    }
+  ]
+}

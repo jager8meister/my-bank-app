@@ -11,7 +11,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
+import ru.yandex.practicum.accounts.dto.CreateAccountRequest;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
+import ru.yandex.practicum.accounts.exception.AccountAlreadyExistsException;
 import ru.yandex.practicum.accounts.exception.AccountNotFoundException;
 import ru.yandex.practicum.accounts.exception.InsufficientFundsException;
 import ru.yandex.practicum.accounts.exception.InvalidAmountException;
@@ -21,7 +23,9 @@ import ru.yandex.practicum.accounts.model.OutboxEvent;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
 import ru.yandex.practicum.accounts.repository.OutboxEventRepository;
 import ru.yandex.practicum.accounts.util.TestDataFactory;
+
 import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -90,48 +94,20 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should update account successfully and write outbox event")
-    void shouldUpdateAccountSuccessfully() {
-        UpdateAccountRequest request = new UpdateAccountRequest(
-                "Иван Иванович Иванов",
-                LocalDate.of(1990, 1, 15)
-        );
-        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
-        when(accountRepository.save(any(Account.class))).thenReturn(Mono.just(testAccount));
-        when(accountRepository.findOtherAccounts("ivanov")).thenReturn(Flux.just(
-                TestDataFactory.createAccountDto("petrov", "Петр Петров"),
-                TestDataFactory.createAccountDto("sidorov", "Сидор Сидоров")
-        ));
-        Mono<AccountResponse> result = accountService.updateAccount("ivanov", request);
+    @DisplayName("getAccountInfo - should include recent transfer info when present")
+    void shouldGetAccountInfoWithRecentTransfer() {
+        OutboxEvent transferEvent = new OutboxEvent();
+        transferEvent.setMessage("Вы получили 500 руб от ivanov");
+        when(accountRepository.findByLogin("petrov")).thenReturn(Mono.just(TestDataFactory.createPetrovAccount()));
+        when(accountRepository.findOtherAccounts("petrov")).thenReturn(Flux.empty());
+        when(outboxEventRepository.findRecentTransferReceivedByRecipient("petrov"))
+                .thenReturn(Mono.just(transferEvent));
+
+        Mono<AccountResponse> result = accountService.getAccountInfo("petrov");
         StepVerifier.create(result)
                 .assertNext(response -> {
-                    assertThat(response.name()).isEqualTo("Иван Иванович Иванов");
+                    assertThat(response.info()).isEqualTo("Вы получили 500 руб от ivanov");
                 })
-                .verifyComplete();
-        verify(accountRepository, times(2)).findByLogin("ivanov");
-        verify(accountRepository).save(any(Account.class));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
-    }
-
-    @Test
-    @DisplayName("Should update balance successfully")
-    void shouldUpdateBalanceSuccessfully() {
-        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
-        when(accountRepository.save(any(Account.class))).thenReturn(Mono.just(testAccount));
-        Mono<Void> result = accountService.updateBalance("ivanov", 10000L);
-        StepVerifier.create(result)
-                .verifyComplete();
-        verify(accountRepository).findByLogin("ivanov");
-        verify(accountRepository).save(any(Account.class));
-    }
-
-    @Test
-    @DisplayName("Should get balance successfully")
-    void shouldGetBalanceSuccessfully() {
-        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
-        Mono<Long> result = accountService.getBalance("ivanov");
-        StepVerifier.create(result)
-                .expectNext(5000L)
                 .verifyComplete();
     }
 
@@ -163,6 +139,37 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("Should reject deposit with null amount")
+    void shouldRejectDepositWithNullAmount() {
+        Mono<Long> result = accountService.depositCash("ivanov", null);
+        StepVerifier.create(result)
+                .expectError(InvalidAmountException.class)
+                .verify();
+        verify(accountRepository, never()).findByLogin(any());
+    }
+
+    @Test
+    @DisplayName("Should reject deposit with zero amount")
+    void shouldRejectDepositWithZeroAmount() {
+        Mono<Long> result = accountService.depositCash("ivanov", 0L);
+        StepVerifier.create(result)
+                .expectError(InvalidAmountException.class)
+                .verify();
+        verify(accountRepository, never()).findByLogin(any());
+    }
+
+    @Test
+    @DisplayName("Should throw AccountNotFoundException when account not found during deposit")
+    void shouldThrowAccountNotFoundWhenDepositForUnknownAccount() {
+        when(accountRepository.findByLogin("unknown")).thenReturn(Mono.empty());
+        Mono<Long> result = accountService.depositCash("unknown", 500L);
+        StepVerifier.create(result)
+                .expectError(AccountNotFoundException.class)
+                .verify();
+        verify(accountRepository, never()).incrementBalance(any(), any());
+    }
+
+    @Test
     @DisplayName("Should withdraw cash successfully and write outbox event")
     void shouldWithdrawCashSuccessfully() {
         when(accountRepository.decrementBalanceIfSufficient("ivanov", 500L)).thenReturn(Mono.just(1));
@@ -190,6 +197,40 @@ class AccountServiceTest {
                 .expectError(InsufficientFundsException.class)
                 .verify();
         verify(accountRepository).decrementBalanceIfSufficient("ivanov", 10000L);
+    }
+
+    @Test
+    @DisplayName("Should reject withdrawal when account not found")
+    void shouldRejectWithdrawalWhenAccountNotFound() {
+        when(accountRepository.decrementBalanceIfSufficient("unknown", 500L)).thenReturn(Mono.just(0));
+        when(accountRepository.findByLogin("unknown")).thenReturn(Mono.empty());
+
+        Mono<Long> result = accountService.withdrawCash("unknown", 500L);
+
+        StepVerifier.create(result)
+                .expectError(AccountNotFoundException.class)
+                .verify();
+        verify(accountRepository).decrementBalanceIfSufficient("unknown", 500L);
+    }
+
+    @Test
+    @DisplayName("Should reject withdrawal with negative amount")
+    void shouldRejectWithdrawalWithNegativeAmount() {
+        Mono<Long> result = accountService.withdrawCash("ivanov", -100L);
+        StepVerifier.create(result)
+                .expectError(InvalidAmountException.class)
+                .verify();
+        verify(accountRepository, never()).decrementBalanceIfSufficient(any(), any());
+    }
+
+    @Test
+    @DisplayName("Should reject withdrawal with zero amount")
+    void shouldRejectWithdrawalWithZeroAmount() {
+        Mono<Long> result = accountService.withdrawCash("ivanov", 0L);
+        StepVerifier.create(result)
+                .expectError(InvalidAmountException.class)
+                .verify();
+        verify(accountRepository, never()).decrementBalanceIfSufficient(any(), any());
     }
 
     @Test
@@ -265,9 +306,9 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should reject deposit with null amount")
-    void shouldRejectDepositWithNullAmount() {
-        Mono<Long> result = accountService.depositCash("ivanov", null);
+    @DisplayName("Should reject transfer with zero amount")
+    void shouldRejectTransferWithZeroAmount() {
+        Mono<AccountService.TransferResult> result = accountService.transferMoney("ivanov", "petrov", 0L);
         StepVerifier.create(result)
                 .expectError(InvalidAmountException.class)
                 .verify();
@@ -275,27 +316,13 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should reject deposit with zero amount")
-    void shouldRejectDepositWithZeroAmount() {
-        Mono<Long> result = accountService.depositCash("ivanov", 0L);
+    @DisplayName("Should reject transfer with null amount")
+    void shouldRejectTransferWithNullAmount() {
+        Mono<AccountService.TransferResult> result = accountService.transferMoney("ivanov", "petrov", null);
         StepVerifier.create(result)
                 .expectError(InvalidAmountException.class)
                 .verify();
         verify(accountRepository, never()).findByLogin(any());
-    }
-
-    @Test
-    @DisplayName("Should reject withdrawal when account not found")
-    void shouldRejectWithdrawalWhenAccountNotFound() {
-        when(accountRepository.decrementBalanceIfSufficient("unknown", 500L)).thenReturn(Mono.just(0));
-        when(accountRepository.findByLogin("unknown")).thenReturn(Mono.empty());
-
-        Mono<Long> result = accountService.withdrawCash("unknown", 500L);
-
-        StepVerifier.create(result)
-                .expectError(AccountNotFoundException.class)
-                .verify();
-        verify(accountRepository).decrementBalanceIfSufficient("unknown", 500L);
     }
 
     @Test
@@ -325,6 +352,88 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("Should create account successfully")
+    void shouldCreateAccountSuccessfully() {
+        CreateAccountRequest request = new CreateAccountRequest(
+                "newuser",
+                "Новый Пользователь",
+                LocalDate.of(1995, 6, 15)
+        );
+        when(accountRepository.findByLogin("newuser")).thenReturn(Mono.empty());
+        when(accountRepository.insertAccount(eq("newuser"), eq("Новый Пользователь"), eq(LocalDate.of(1995, 6, 15))))
+                .thenReturn(Mono.just(1));
+
+        Mono<Void> result = accountService.createAccount(request);
+
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(accountRepository).findByLogin("newuser");
+        verify(accountRepository).insertAccount("newuser", "Новый Пользователь", LocalDate.of(1995, 6, 15));
+    }
+
+    @Test
+    @DisplayName("Should reject createAccount when account already exists")
+    void shouldRejectCreateAccountWhenAlreadyExists() {
+        CreateAccountRequest request = new CreateAccountRequest(
+                "ivanov",
+                "Иван Иванов",
+                LocalDate.of(1990, 1, 15)
+        );
+        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
+
+        Mono<Void> result = accountService.createAccount(request);
+
+        StepVerifier.create(result)
+                .expectError(AccountAlreadyExistsException.class)
+                .verify();
+        verify(accountRepository).findByLogin("ivanov");
+        verify(accountRepository, never()).insertAccount(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should reject createAccount when insertAccount returns 0 rows (race condition)")
+    void shouldRejectCreateAccountWhenInsertReturnsZeroRows() {
+        CreateAccountRequest request = new CreateAccountRequest(
+                "newuser",
+                "Новый Пользователь",
+                LocalDate.of(1995, 6, 15)
+        );
+        when(accountRepository.findByLogin("newuser")).thenReturn(Mono.empty());
+        when(accountRepository.insertAccount(eq("newuser"), eq("Новый Пользователь"), eq(LocalDate.of(1995, 6, 15))))
+                .thenReturn(Mono.just(0));
+
+        Mono<Void> result = accountService.createAccount(request);
+
+        StepVerifier.create(result)
+                .expectError(AccountAlreadyExistsException.class)
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should update account successfully and write outbox event")
+    void shouldUpdateAccountSuccessfully() {
+        UpdateAccountRequest request = new UpdateAccountRequest(
+                "Иван Иванович Иванов",
+                LocalDate.of(1990, 1, 15)
+        );
+        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
+        when(accountRepository.save(any(Account.class))).thenReturn(Mono.just(testAccount));
+        when(accountRepository.findOtherAccounts("ivanov")).thenReturn(Flux.just(
+                TestDataFactory.createAccountDto("petrov", "Петр Петров"),
+                TestDataFactory.createAccountDto("sidorov", "Сидор Сидоров")
+        ));
+        Mono<AccountResponse> result = accountService.updateAccount("ivanov", request);
+        StepVerifier.create(result)
+                .assertNext(response -> {
+                    assertThat(response.name()).isEqualTo("Иван Иванович Иванов");
+                })
+                .verifyComplete();
+        verify(accountRepository, times(2)).findByLogin("ivanov");
+        verify(accountRepository).save(any(Account.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
     @DisplayName("Should reject update when account not found")
     void shouldRejectUpdateWhenAccountNotFound() {
         UpdateAccountRequest request = new UpdateAccountRequest("Test Name", LocalDate.of(1990, 1, 1));
@@ -337,6 +446,18 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("Should update balance successfully")
+    void shouldUpdateBalanceSuccessfully() {
+        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
+        when(accountRepository.save(any(Account.class))).thenReturn(Mono.just(testAccount));
+        Mono<Void> result = accountService.updateBalance("ivanov", 10000L);
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(accountRepository).findByLogin("ivanov");
+        verify(accountRepository).save(any(Account.class));
+    }
+
+    @Test
     @DisplayName("Should reject balance update when account not found")
     void shouldRejectBalanceUpdateWhenAccountNotFound() {
         when(accountRepository.findByLogin("unknown")).thenReturn(Mono.empty());
@@ -345,6 +466,16 @@ class AccountServiceTest {
                 .expectError(AccountNotFoundException.class)
                 .verify();
         verify(accountRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should get balance successfully")
+    void shouldGetBalanceSuccessfully() {
+        when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
+        Mono<Long> result = accountService.getBalance("ivanov");
+        StepVerifier.create(result)
+                .expectNext(5000L)
+                .verifyComplete();
     }
 
     @Test
