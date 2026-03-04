@@ -1,5 +1,15 @@
 image: "bank-front-service:latest"
 imagePullPolicy: Never
 replicas: 1
-nodePort: 30084
 global: {}
+containerPort: 8084
+service:
+  type: LoadBalancer
+  port: 8084
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

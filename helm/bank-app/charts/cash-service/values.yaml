@@ -2,3 +2,14 @@ image: "bank-cash-service:latest"
 imagePullPolicy: Never
 replicas: 1
 global: {}
+containerPort: 8082
+service:
+  type: ClusterIP
+  port: 8082
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

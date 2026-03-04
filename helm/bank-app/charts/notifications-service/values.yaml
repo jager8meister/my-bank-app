@@ -2,3 +2,15 @@ image: "bank-notifications-service:latest"
 imagePullPolicy: Never
 replicas: 1
 global: {}
+containerPort: 8086
+hasSecret: false
+service:
+  type: ClusterIP
+  port: 8086
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

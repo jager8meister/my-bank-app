@@ -8,7 +8,7 @@ SERVICES := accounts-service auth-service cash-service transfer-service \
 HELM := $(shell which helm 2>/dev/null || \
   find /c/Users/danil/AppData/Local/Microsoft/WinGet -name "helm.exe" 2>/dev/null | head -1)
 
-.PHONY: build deploy undeploy rebuild restart status clean check \
+.PHONY: build deploy undeploy rebuild restart status clean check helm-deps \
         $(addprefix build-,$(SERVICES)) \
         $(addprefix logs-,$(SERVICES))
 
@@ -41,7 +41,12 @@ build-gateway-service:
 build-front-service:
 	docker build -t my-bank-app-front-service:latest -f front-service/Dockerfile .
 
-deploy:
+helm-deps:
+	@for svc in $(SERVICES); do \
+		"$(HELM)" dependency update helm/bank-app/charts/$$svc; \
+	done
+
+deploy: helm-deps
 	"$(HELM)" upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 	  -n $(NAMESPACE) --create-namespace \
 	  --wait --rollback-on-failure --timeout 10m

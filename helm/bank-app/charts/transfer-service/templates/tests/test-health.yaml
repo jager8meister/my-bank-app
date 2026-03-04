@@ -1,13 +1,1 @@
-apiVersion: v1
-kind: Pod
-metadata:
-  name: {{ include "transfer-service.fullname" . }}-test-health
-  annotations:
-    "helm.sh/hook": test
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-spec:
-  containers:
-    - name: test
-      image: busybox:1.36
-      command: ['wget', '-qO-', '--timeout=30', 'http://transfer-service:8085/actuator/health']
-  restartPolicy: Never
+{{ include "common.test" . }}

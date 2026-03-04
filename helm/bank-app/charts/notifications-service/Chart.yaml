@@ -3,3 +3,7 @@ name: notifications-service
 description: Notifications Service for bank app
 type: application
 version: 1.0.0
+dependencies:
+  - name: common
+    version: "0.1.0"
+    repository: "file://../common"
