@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Mono;
-import ru.yandex.practicum.mybankfront.client.NotificationsClient;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
 import ru.yandex.practicum.mybankfront.service.AccountService;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class MainController {
 
     private final AccountService accountService;
     private final OAuth2AuthorizedClientService authorizedClientService;
-    private final NotificationsClient notificationsClient;
+    private final NotificationStore notificationStore;
 
     @GetMapping
     public String index() {
@@ -55,12 +55,11 @@ public class MainController {
         log.info("GET /account requested by user: {}", login);
         String accessToken = getAccessToken(authentication);
         return accountService.getAccountInfo(login, accessToken)
-                .flatMap(accountData -> {
+                .map(accountData -> {
                     fillModel(model, accountData);
-                    return notificationsClient.getPendingImmediate(login)
-                            .doOnNext(notification -> model.addAttribute("info", notification))
-                            .defaultIfEmpty("")
-                            .thenReturn("main");
+                    String pending = notificationStore.pop(login);
+                    if (pending != null) model.addAttribute("info", pending);
+                    return "main";
                 });
     }
 
@@ -75,12 +74,12 @@ public class MainController {
         log.info("POST /account (edit profile) requested by user: {}", login);
         String accessToken = getAccessToken(authentication);
         return accountService.updateAccount(login, name, birthdate, accessToken)
-                .flatMap(accountData -> {
+                .map(accountData -> {
                     fillModel(model, accountData);
-                    return notificationsClient.saveAndGet(login, "Данные профиля успешно сохранены")
-                            .doOnNext(notification -> model.addAttribute("info", notification))
-                            .defaultIfEmpty("")
-                            .thenReturn("main");
+                    if (accountData.get("errors") == null) {
+                        model.addAttribute("info", "Данные профиля успешно сохранены");
+                    }
+                    return "main";
                 });
     }
 

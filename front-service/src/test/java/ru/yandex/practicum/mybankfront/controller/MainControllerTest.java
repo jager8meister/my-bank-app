@@ -11,10 +11,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import ru.yandex.practicum.mybankfront.client.NotificationsClient;
 import ru.yandex.practicum.mybankfront.config.TestSecurityConfig;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
 import ru.yandex.practicum.mybankfront.service.AccountService;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -50,7 +50,7 @@ class MainControllerTest {
     private OAuth2AuthorizedClientService authorizedClientService;
 
     @MockitoBean
-    private NotificationsClient notificationsClient;
+    private NotificationStore notificationStore;
 
     @Test
     @WithMockUser(username = "ivanov")
@@ -70,7 +70,6 @@ class MainControllerTest {
         );
         when(accountService.getAccountInfo(anyString(), anyString()))
                 .thenReturn(Mono.just(accountData));
-        when(notificationsClient.getPendingImmediate(anyString())).thenReturn(Mono.empty());
         mockMvc.perform(get("/account"))
                 .andExpect(request().asyncStarted());
         verify(accountService).getAccountInfo(eq("ivanov"), anyString());
@@ -86,7 +85,6 @@ class MainControllerTest {
         );
         when(accountService.updateAccount(anyString(), anyString(), any(LocalDate.class), anyString()))
                 .thenReturn(Mono.just(updatedData));
-        when(notificationsClient.saveAndGet(anyString(), anyString())).thenReturn(Mono.empty());
         mockMvc.perform(post("/account")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)

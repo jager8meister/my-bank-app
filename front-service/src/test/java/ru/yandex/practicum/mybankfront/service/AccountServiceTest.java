@@ -9,8 +9,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import ru.yandex.practicum.mybankfront.client.NotificationsClient;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,7 +29,7 @@ class AccountServiceTest {
     private WebClient webClient;
 
     @Mock
-    private NotificationsClient notificationsClient;
+    private NotificationStore notificationStore;
 
     @Mock
     private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
@@ -50,9 +50,9 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(webClient, notificationsClient);
+        accountService = new AccountService(webClient, notificationStore);
         ReflectionTestUtils.setField(accountService, "gatewayUrl", "http://localhost:8080");
-        lenient().when(notificationsClient.getPendingNotification(anyString())).thenReturn(Mono.empty());
+        lenient().when(notificationStore.pop(anyString())).thenReturn(null);
     }
 
     @Test

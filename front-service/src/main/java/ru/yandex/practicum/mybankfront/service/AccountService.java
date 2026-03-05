@@ -8,9 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
-import ru.yandex.practicum.mybankfront.client.NotificationsClient;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -23,7 +24,7 @@ import java.util.Map;
 public class AccountService {
 
     private final WebClient webClient;
-    private final NotificationsClient notificationsClient;
+    private final NotificationStore notificationStore;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,12 +88,12 @@ public class AccountService {
                                 });
                     }
                     return getAccountInfo(login, accessToken)
-                            .flatMap(accountInfo -> notificationsClient.getPendingNotification(login)
-                                    .map(notification -> {
-                                        accountInfo.put("info", notification);
+                            .flatMap(accountInfo -> Mono.delay(Duration.ofMillis(500))
+                                    .map(__ -> {
+                                        String notification = notificationStore.pop(login);
+                                        if (notification != null) accountInfo.put("info", notification);
                                         return accountInfo;
-                                    })
-                                    .defaultIfEmpty(accountInfo));
+                                    }));
                 })
                 .onErrorResume(e -> {
                     log.error("Failed to process cash {} for {}: {}", action, login, e.getMessage());
@@ -124,12 +125,12 @@ public class AccountService {
                     return getAccountInfo(login, accessToken)
                             .flatMap(accountInfo -> {
                                 if (success != null && success) {
-                                    return notificationsClient.getPendingNotification(login)
-                                            .map(notification -> {
-                                                accountInfo.put("info", notification);
+                                    return Mono.delay(Duration.ofMillis(500))
+                                            .map(__ -> {
+                                                String notification = notificationStore.pop(login);
+                                                if (notification != null) accountInfo.put("info", notification);
                                                 return accountInfo;
-                                            })
-                                            .defaultIfEmpty(accountInfo);
+                                            });
                                 } else {
                                     accountInfo.put("errors", List.of(message));
                                     return Mono.just(accountInfo);
@@ -140,8 +141,7 @@ public class AccountService {
                     log.error("Failed to process transfer from {} to {}: {}", login, toLogin, e.getMessage());
                     return getAccountInfo(login, accessToken)
                             .map(accountInfo -> {
-                                String errorMessage = extractErrorMessage(e);
-                                accountInfo.put("errors", List.of(errorMessage));
+                                accountInfo.put("errors", List.of(extractErrorMessage(e)));
                                 return accountInfo;
                             })
                             .onErrorResume(fallbackError -> {

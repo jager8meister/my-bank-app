@@ -25,9 +25,13 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import java.util.concurrent.CompletableFuture;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DisplayName("CashService Unit Tests")
 class CashServiceTest {
@@ -50,6 +54,7 @@ class CashServiceTest {
 
         ReflectionTestUtils.setField(cashService, "accountsServiceHost", "localhost");
         ReflectionTestUtils.setField(cashService, "accountsServicePort", wireMockServer.port());
+        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
     }
 
     @AfterEach
