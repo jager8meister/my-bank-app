@@ -7,16 +7,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.cash.dto.CashAction;
 import ru.yandex.practicum.cash.dto.CashOperationRequest;
 import ru.yandex.practicum.cash.dto.CashResponse;
+import ru.yandex.practicum.cash.dto.NotificationEvent;
 import ru.yandex.practicum.cash.exception.CashOperationException;
 import ru.yandex.practicum.cash.exception.InsufficientFundsException;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +27,8 @@ import java.time.Duration;
 public class CashService {
 
     private final WebClient webClient;
+
+    private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
@@ -34,6 +39,7 @@ public class CashService {
     @CircuitBreaker(name = "accounts-service", fallbackMethod = "fallbackCashOperation")
     @Retry(name = "accounts-service")
     public Mono<CashResponse> processCashOperation(String login, CashOperationRequest operation) {
+        log.info("Processing cash operation: login={}, action={}, amount={}", login, operation.action(), operation.value());
         String endpoint = operation.action() == CashAction.GET
                 ? "/api/accounts/{login}/withdraw"
                 : "/api/accounts/{login}/deposit";
@@ -58,13 +64,29 @@ public class CashService {
                     return Mono.error(new CashOperationException("Сервис счетов недоступен: " + response.statusCode()));
                 })
                 .bodyToMono(Long.class)
-                .map(newBalance -> new CashResponse(
-                        newBalance,
-                        null,
-                        operation.action() == CashAction.GET
-                                ? "Снято " + operation.value() + " руб"
-                                : "Положено " + operation.value() + " руб"
-                ))
+                .map(newBalance -> {
+                    log.info("Cash operation completed: login={}, action={}, amount={}, newBalance={}", login, operation.action(), operation.value(), newBalance);
+                    return new CashResponse(
+                            newBalance,
+                            null,
+                            operation.action() == CashAction.GET
+                                    ? "Снято " + operation.value() + " руб"
+                                    : "Положено " + operation.value() + " руб"
+                    );
+                })
+                .doOnSuccess(response -> {
+                    String type = operation.action() == CashAction.GET ? "CASH_WITHDRAWAL" : "CASH_DEPOSIT";
+                    log.info("Sending Kafka notification: login={}, type={}", login, type);
+                    kafkaTemplate.send("notifications", login,
+                            new NotificationEvent(login, type, response.info(), LocalDateTime.now().toString()))
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    log.warn("Failed to send Kafka notification: login={}, type={}, error={}", login, type, ex.getMessage());
+                                } else {
+                                    log.debug("Kafka notification sent successfully: login={}, type={}, offset={}", login, type, result.getRecordMetadata().offset());
+                                }
+                            });
+                })
                 .timeout(Duration.ofSeconds(3))
                 .onErrorResume(error -> {
                     if (error instanceof InsufficientFundsException || error instanceof CashOperationException) {

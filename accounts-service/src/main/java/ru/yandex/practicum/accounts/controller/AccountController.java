@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -35,6 +36,7 @@ import ru.yandex.practicum.accounts.util.AuthorizationUtils;
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor
 @Validated
+@Slf4j
 @Tag(name = "Accounts", description = "Account management operations")
 public class AccountController {
 
@@ -55,6 +57,7 @@ public class AccountController {
             @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             Authentication authentication
     ) {
+        log.info("GET /api/accounts/{} — fetching account info", login);
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.getAccountInfo(login));
     }
@@ -76,6 +79,7 @@ public class AccountController {
             @RequestBody @Valid UpdateAccountRequest request,
             Authentication authentication
     ) {
+        log.info("PUT /api/accounts/{} — updating account details", login);
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.updateAccount(login, request));
     }
@@ -101,6 +105,7 @@ public class AccountController {
             Long balance,
             Authentication authentication
     ) {
+        log.info("PUT /api/accounts/{}/balance — setting balance to {} (internal microservice call)", login, balance);
         return AuthorizationUtils.checkMicroserviceAuthorizationReactive(authentication, "Only microservices can update balance directly")
                 .then(accountService.updateBalance(login, balance));
     }
@@ -120,6 +125,7 @@ public class AccountController {
             @PathVariable @NotBlank(message = "Login is required") @Size(max = 20) String login,
             Authentication authentication
     ) {
+        log.info("GET /api/accounts/{}/balance — fetching balance", login);
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.getBalance(login));
     }
@@ -146,6 +152,7 @@ public class AccountController {
             Long amount,
             Authentication authentication
     ) {
+        log.info("POST /api/accounts/{}/deposit — amount={}", login, amount);
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.depositCash(login, amount));
     }
@@ -172,6 +179,7 @@ public class AccountController {
             Long amount,
             Authentication authentication
     ) {
+        log.info("POST /api/accounts/{}/withdraw — amount={}", login, amount);
         return AuthorizationUtils.checkAuthorizationReactive(login, authentication, "You can only access your own account")
                 .then(accountService.withdrawCash(login, amount));
     }
@@ -187,6 +195,7 @@ public class AccountController {
     })
     @PostMapping("/register")
     public Mono<ResponseEntity<Void>> createAccount(@RequestBody @Valid CreateAccountRequest request) {
+        log.info("POST /api/accounts/register — registering account for login='{}'", request.login());
         return accountService.createAccount(request)
                 .thenReturn(ResponseEntity.<Void>status(HttpStatus.CREATED).build());
     }
@@ -216,6 +225,7 @@ public class AccountController {
             Long amount,
             Authentication authentication
     ) {
+        log.info("POST /api/accounts/internal/transfer — from='{}' to='{}' amount={}", from, to, amount);
         return AuthorizationUtils.checkMicroserviceAuthorizationReactive(authentication,
                         "Only microservices can call this endpoint")
                 .then(accountService.transferMoney(from, to, amount));

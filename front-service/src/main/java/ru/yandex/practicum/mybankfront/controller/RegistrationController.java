@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,6 +16,7 @@ import ru.yandex.practicum.mybankfront.service.RegistrationService;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 @Slf4j
 @Controller
@@ -22,6 +24,7 @@ import java.time.temporal.ChronoUnit;
 public class RegistrationController {
 
     private final RegistrationService registrationService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/register")
     public String showRegistrationForm() {
@@ -92,15 +95,23 @@ public class RegistrationController {
             return Mono.just("register");
         }
 
+        log.info("Registration attempt for login: {}", login);
         return registrationService.register(new RegistrationRequest(login, password, name, birthdate))
-                .thenReturn("redirect:/?registered=true")
+                .thenReturn("redirect:/login?registered=true")
                 .onErrorResume(e -> {
                     log.error("Registration failed for {}: {}", login, e.getMessage());
                     String errorMessage;
                     if (e instanceof WebClientResponseException webEx) {
                         String body = webEx.getResponseBodyAsString();
                         if (body.contains("\"error\"")) {
-                            errorMessage = body.replaceAll(".*\"error\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+                            try {
+                                Map<?, ?> json = objectMapper.readValue(body, Map.class);
+                                Object err = json.get("error");
+                                errorMessage = err != null ? err.toString() : translateError(body);
+                            } catch (Exception jsonEx) {
+                                log.warn("Failed to parse error response as JSON: {}", body);
+                                errorMessage = translateError(body);
+                            }
                         } else {
                             errorMessage = translateError(webEx.getMessage());
                         }

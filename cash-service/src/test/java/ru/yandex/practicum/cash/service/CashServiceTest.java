@@ -7,6 +7,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -14,6 +16,7 @@ import reactor.test.StepVerifier;
 import ru.yandex.practicum.cash.dto.CashAction;
 import ru.yandex.practicum.cash.dto.CashOperationRequest;
 import ru.yandex.practicum.cash.dto.CashResponse;
+import ru.yandex.practicum.cash.dto.NotificationEvent;
 import ru.yandex.practicum.cash.exception.CashOperationException;
 import ru.yandex.practicum.cash.exception.InsufficientFundsException;
 
@@ -22,6 +25,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 @DisplayName("CashService Unit Tests")
 class CashServiceTest {
@@ -30,6 +36,9 @@ class CashServiceTest {
 
     private CashService cashService;
 
+    @SuppressWarnings("unchecked")
+    private final KafkaTemplate<String, NotificationEvent> kafkaTemplate = Mockito.mock(KafkaTemplate.class);
+
     @BeforeEach
     void setUp() {
         wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
@@ -37,7 +46,7 @@ class CashServiceTest {
         WireMock.configureFor("localhost", wireMockServer.port());
 
         WebClient webClient = WebClient.builder().build();
-        cashService = new CashService(webClient);
+        cashService = new CashService(webClient, kafkaTemplate);
 
         ReflectionTestUtils.setField(cashService, "accountsServiceHost", "localhost");
         ReflectionTestUtils.setField(cashService, "accountsServicePort", wireMockServer.port());
@@ -69,6 +78,8 @@ class CashServiceTest {
                     assertThat(response.errors()).isNull();
                 })
                 .verifyComplete();
+
+        verify(kafkaTemplate).send(eq("notifications"), eq("ivanov"), any(NotificationEvent.class));
     }
 
     @Test
@@ -92,6 +103,8 @@ class CashServiceTest {
                     assertThat(response.errors()).isNull();
                 })
                 .verifyComplete();
+
+        verify(kafkaTemplate).send(eq("notifications"), eq("ivanov"), any(NotificationEvent.class));
     }
 
     @Test

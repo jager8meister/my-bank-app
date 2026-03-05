@@ -5,11 +5,13 @@ metadata:
   labels:
     app: front-service
 data:
-  FRONT_SERVICE_PORT: "8084"
-  GATEWAY_SERVICE_HOST: "gateway-service"
-  GATEWAY_PORT: "8080"
-  AUTH_SERVICE_HOST: "auth-service"
-  AUTH_SERVICE_PORT: "8083"
+  FRONT_SERVICE_PORT: {{ .Values.containerPort | quote }}
+  GATEWAY_SERVICE_HOST: {{ .Values.global.services.gateway.host | quote }}
+  GATEWAY_PORT: {{ .Values.global.services.gateway.port | quote }}
+  AUTH_SERVICE_HOST: {{ .Values.global.services.auth.host | quote }}
+  AUTH_SERVICE_PORT: {{ .Values.global.services.auth.port | quote }}
   KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
-  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_INTERNAL_URL: {{ .Values.global.keycloak.internalUrl | quote }}
   KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}
+  NOTIFICATIONS_SERVICE_HOST: {{ .Values.global.services.notifications.host | quote }}
+  NOTIFICATIONS_SERVICE_PORT: {{ .Values.global.services.notifications.port | quote }}

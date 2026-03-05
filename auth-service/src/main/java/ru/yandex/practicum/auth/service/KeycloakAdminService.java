@@ -44,6 +44,7 @@ public class KeycloakAdminService {
     }
 
     public Mono<TokenResponse> getUserToken(String username, String password) {
+        log.info("Requesting Keycloak token for user: {}", username);
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "password");
         formData.add("client_id", clientId);
@@ -57,10 +58,12 @@ public class KeycloakAdminService {
                 .body(BodyInserters.fromFormData(formData))
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
+                .doOnSuccess(t -> log.info("Keycloak token obtained for user: {}", username))
                 .doOnError(e -> log.error("Failed to get user token for {}: {}", username, e.getMessage()));
     }
 
     public Mono<TokenResponse> refreshUserToken(String refreshToken) {
+        log.info("Requesting Keycloak token refresh");
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "refresh_token");
         formData.add("client_id", clientId);
@@ -73,10 +76,12 @@ public class KeycloakAdminService {
                 .body(BodyInserters.fromFormData(formData))
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
+                .doOnSuccess(t -> log.info("Keycloak token refresh succeeded"))
                 .doOnError(e -> log.error("Failed to refresh token: {}", e.getMessage()));
     }
 
     public Mono<String> getAdminToken() {
+        log.info("Requesting Keycloak admin token for realm: master");
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "password");
         formData.add("client_id", "admin-cli");
@@ -90,16 +95,19 @@ public class KeycloakAdminService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> (String) response.get("access_token"))
+                .doOnSuccess(t -> log.info("Keycloak admin token obtained successfully"))
                 .doOnError(e -> log.error("Failed to get admin token: {}", e.getMessage()));
     }
 
     public Mono<Boolean> userExists(String adminToken, String login) {
+        log.info("Checking Keycloak user existence for login: {}", login);
         return webClient.get()
                 .uri(adminUrl + "/admin/realms/" + realm + "/users?username={login}&exact=true", login)
                 .headers(h -> h.setBearerAuth(adminToken))
                 .retrieve()
                 .bodyToFlux(Map.class)
-                .hasElements();
+                .hasElements()
+                .doOnNext(exists -> log.debug("User existence check for {}: exists={}", login, exists));
     }
 
     public Mono<String> createUser(String adminToken, String login) {
@@ -146,13 +154,16 @@ public class KeycloakAdminService {
     }
 
     public Mono<List<Map>> getRealmRolesByName(String adminToken, List<String> roleNames) {
+        log.info("Fetching {} realm roles from Keycloak: {}", roleNames.size(), roleNames);
         return Flux.fromIterable(roleNames)
                 .flatMap(roleName -> webClient.get()
                         .uri(adminUrl + "/admin/realms/" + realm + "/roles/{roleName}", roleName)
                         .headers(h -> h.setBearerAuth(adminToken))
                         .retrieve()
-                        .bodyToMono(Map.class))
-                .collectList();
+                        .bodyToMono(Map.class)
+                        .doOnError(e -> log.warn("Failed to fetch realm role '{}': {}", roleName, e.getMessage())))
+                .collectList()
+                .doOnSuccess(roles -> log.info("Successfully fetched {} realm roles", roles.size()));
     }
 
     public Mono<Void> assignRoles(String adminToken, String userId, List<Map> roles) {

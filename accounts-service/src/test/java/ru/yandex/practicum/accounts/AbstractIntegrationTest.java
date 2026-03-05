@@ -33,5 +33,6 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9092");
     }
 }

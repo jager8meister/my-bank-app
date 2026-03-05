@@ -10,8 +10,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import ru.yandex.practicum.transfer.dto.NotificationEvent;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
@@ -38,6 +40,9 @@ class TransferServiceWebClientTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
+
     private TransferService transferService;
 
     private WebClient.RequestBodyUriSpec requestBodyUriSpec;
@@ -48,7 +53,7 @@ class TransferServiceWebClientTest {
 
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, objectMapper);
+        transferService = new TransferService(webClient, objectMapper, kafkaTemplate);
         requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         requestBodySpec = mock(WebClient.RequestBodySpec.class);
         responseSpec = mock(WebClient.ResponseSpec.class);

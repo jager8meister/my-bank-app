@@ -1,7 +1,6 @@
 package ru.yandex.practicum.gateway.filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -14,10 +13,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 @Component
 public class RateLimitingFilter implements GlobalFilter, Ordered {
-
-    private static final Logger log = LoggerFactory.getLogger(RateLimitingFilter.class);
 
     private static final int MAX_REQUESTS_PER_MINUTE = 100;
 

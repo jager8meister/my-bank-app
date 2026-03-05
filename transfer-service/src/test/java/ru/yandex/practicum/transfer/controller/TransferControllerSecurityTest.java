@@ -79,7 +79,7 @@ class TransferControllerSecurityTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "ivanov"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                        .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_Transfer")))
                 .post()
                 .uri("/api/transfer")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +99,7 @@ class TransferControllerSecurityTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "ivanov"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                        .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_Transfer")))
                 .post()
                 .uri("/api/transfer")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -116,7 +116,7 @@ class TransferControllerSecurityTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "ivanov"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                        .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_Transfer")))
                 .post()
                 .uri("/api/transfer")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -134,7 +134,7 @@ class TransferControllerSecurityTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "ivanov"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                        .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_Transfer")))
                 .post()
                 .uri("/api/transfer")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -176,7 +176,7 @@ class TransferControllerSecurityTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockJwt()
                         .jwt(j -> j.claim("preferred_username", "ivanov"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_USER")))
+                        .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_Transfer")))
                 .post()
                 .uri("/api/transfer")
                 .contentType(MediaType.APPLICATION_JSON)

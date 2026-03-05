@@ -5,12 +5,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import ru.yandex.practicum.mybankfront.client.NotificationsClient;
 import ru.yandex.practicum.mybankfront.config.TestSecurityConfig;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
 import ru.yandex.practicum.mybankfront.service.AccountService;
@@ -45,17 +46,16 @@ class MainControllerTest {
     @MockitoBean
     private WebClient webClient;
 
-    private MockHttpSession mockSession() {
-        MockHttpSession session = new MockHttpSession();
-        session.setAttribute("ACCESS_TOKEN", "test-access-token");
-        session.setAttribute("TOKEN_EXPIRES_AT", Long.MAX_VALUE);
-        return session;
-    }
+    @MockitoBean
+    private OAuth2AuthorizedClientService authorizedClientService;
+
+    @MockitoBean
+    private NotificationsClient notificationsClient;
 
     @Test
     @WithMockUser(username = "ivanov")
     void shouldRedirectIndexToAccount() throws Exception {
-        mockMvc.perform(get("/").session(mockSession()))
+        mockMvc.perform(get("/"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/account"));
     }
@@ -70,7 +70,8 @@ class MainControllerTest {
         );
         when(accountService.getAccountInfo(anyString(), anyString()))
                 .thenReturn(Mono.just(accountData));
-        mockMvc.perform(get("/account").session(mockSession()))
+        when(notificationsClient.getPendingImmediate(anyString())).thenReturn(Mono.empty());
+        mockMvc.perform(get("/account"))
                 .andExpect(request().asyncStarted());
         verify(accountService).getAccountInfo(eq("ivanov"), anyString());
     }
@@ -85,8 +86,8 @@ class MainControllerTest {
         );
         when(accountService.updateAccount(anyString(), anyString(), any(LocalDate.class), anyString()))
                 .thenReturn(Mono.just(updatedData));
+        when(notificationsClient.saveAndGet(anyString(), anyString())).thenReturn(Mono.empty());
         mockMvc.perform(post("/account")
-                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("name", "Иван Петрович Иванов")
@@ -106,7 +107,6 @@ class MainControllerTest {
         when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
-                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "500")
@@ -126,7 +126,6 @@ class MainControllerTest {
         when(accountService.processCash(anyString(), anyLong(), any(CashAction.class), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/cash")
-                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "500")
@@ -146,7 +145,6 @@ class MainControllerTest {
         when(accountService.transfer(anyString(), anyLong(), anyString(), anyString()))
                 .thenReturn(Mono.just(responseData));
         mockMvc.perform(post("/transfer")
-                        .session(mockSession())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .param("value", "100")

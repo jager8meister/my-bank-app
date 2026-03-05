@@ -1,0 +1,4 @@
+image: "apache/kafka:3.9.0"
+storageSize: "1Gi"
+clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
+advertisedListeners: "PLAINTEXT://kafka:9092"

@@ -104,7 +104,7 @@ class RegistrationControllerTest {
                                 .andExpect(request().asyncStarted())
                                 .andReturn()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/?registered=true"));
+                .andExpect(redirectedUrl("/login?registered=true"));
     }
 
     @Test

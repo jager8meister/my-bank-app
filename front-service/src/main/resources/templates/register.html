@@ -26,7 +26,7 @@
                 <div class="card-body">
                     <div class="alert alert-danger" role="alert" th:if="${error}" th:text="${error}"></div>
                     <div class="alert alert-success" role="alert" th:if="${param.success}">
-                        Регистрация прошла успешно! Теперь вы можете <a href="/">войти</a>.
+                        Регистрация прошла успешно! Теперь вы можете <a href="/login">войти</a>.
                     </div>
                     <form method="post" th:action="@{/register}" id="registerForm">
                         <div class="form-group mb-3">
@@ -60,7 +60,7 @@
                         <button type="submit" class="btn btn-secondary w-100">Зарегистрироваться</button>
                     </form>
                     <div class="mt-3 text-center">
-                        <a href="/">Уже есть аккаунт? Войти</a>
+                        <a href="/login">Уже есть аккаунт? Войти</a>
                     </div>
                 </div>
             </div>

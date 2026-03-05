@@ -5,13 +5,12 @@ metadata:
   labels:
     app: accounts-service
 data:
-  ACCOUNTS_SERVICE_PORT: "8081"
+  ACCOUNTS_SERVICE_PORT: {{ .Values.containerPort | quote }}
   POSTGRES_HOST: {{ .Values.global.postgres.host | quote }}
   POSTGRES_PORT: {{ .Values.global.postgres.port | quote }}
   POSTGRES_DB: {{ .Values.global.postgres.db | quote }}
   POSTGRES_USER: {{ .Values.global.postgres.user | quote }}
   KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
-  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_INTERNAL_URL: {{ .Values.global.keycloak.internalUrl | quote }}
   KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}
-  NOTIFICATIONS_SERVICE_HOST: "notifications-service"
-  NOTIFICATIONS_SERVICE_PORT: "8086"
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.global.kafka.bootstrapServers | quote }}

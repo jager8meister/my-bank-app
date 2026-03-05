@@ -28,7 +28,6 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -57,8 +56,6 @@ class AccountServiceTest {
         testAccount.setId(1L);
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class)))
                 .thenReturn(Mono.just(new OutboxEvent()));
-        lenient().when(outboxEventRepository.findRecentTransferReceivedByRecipient(anyString()))
-                .thenReturn(Mono.empty());
     }
 
     @Test
@@ -94,25 +91,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("getAccountInfo - should include recent transfer info when present")
-    void shouldGetAccountInfoWithRecentTransfer() {
-        OutboxEvent transferEvent = new OutboxEvent();
-        transferEvent.setMessage("Вы получили 500 руб от ivanov");
-        when(accountRepository.findByLogin("petrov")).thenReturn(Mono.just(TestDataFactory.createPetrovAccount()));
-        when(accountRepository.findOtherAccounts("petrov")).thenReturn(Flux.empty());
-        when(outboxEventRepository.findRecentTransferReceivedByRecipient("petrov"))
-                .thenReturn(Mono.just(transferEvent));
-
-        Mono<AccountResponse> result = accountService.getAccountInfo("petrov");
-        StepVerifier.create(result)
-                .assertNext(response -> {
-                    assertThat(response.info()).isEqualTo("Вы получили 500 руб от ivanov");
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    @DisplayName("Should deposit cash successfully and write outbox event")
+    @DisplayName("Should deposit cash successfully")
     void shouldDepositCashSuccessfully() {
         when(accountRepository.findByLogin("ivanov")).thenReturn(Mono.just(testAccount));
         when(accountRepository.incrementBalance("ivanov", 500L)).thenReturn(Mono.just(1));
@@ -125,7 +104,6 @@ class AccountServiceTest {
                 .expectNext(5500L)
                 .verifyComplete();
         verify(accountRepository).incrementBalance("ivanov", 500L);
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -170,7 +148,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should withdraw cash successfully and write outbox event")
+    @DisplayName("Should withdraw cash successfully")
     void shouldWithdrawCashSuccessfully() {
         when(accountRepository.decrementBalanceIfSufficient("ivanov", 500L)).thenReturn(Mono.just(1));
         testAccount.setBalance(4500L);
@@ -182,7 +160,6 @@ class AccountServiceTest {
                 .expectNext(4500L)
                 .verifyComplete();
         verify(accountRepository).decrementBalanceIfSufficient("ivanov", 500L);
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -234,7 +211,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("Should transfer money successfully and write two outbox events")
+    @DisplayName("Should transfer money successfully")
     void shouldTransferMoneySuccessfully() {
         Account petrov = TestDataFactory.createPetrovAccount();
         petrov.setId(2L);
@@ -263,7 +240,6 @@ class AccountServiceTest {
                 .verifyComplete();
         verify(accountRepository).decrementBalanceIfSufficient("ivanov", 1000L);
         verify(accountRepository).incrementBalance("petrov", 1000L);
-        verify(outboxEventRepository, times(2)).save(any(OutboxEvent.class));
     }
 
     @Test

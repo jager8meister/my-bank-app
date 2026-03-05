@@ -1,5 +1,6 @@
 package ru.yandex.practicum.auth.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -9,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+@Slf4j
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
@@ -21,6 +23,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        log.info("Configuring security filter chain: public endpoints=[/api/auth/register, /api/auth/token, /api/auth/refresh], JWT resource server enabled");
         http
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/**").permitAll()

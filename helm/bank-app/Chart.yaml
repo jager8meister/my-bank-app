@@ -32,3 +32,6 @@ dependencies:
   - name: front-service
     version: "1.0.0"
     repository: "file://charts/front-service"
+  - name: kafka
+    version: "1.0.0"
+    repository: "file://charts/kafka"

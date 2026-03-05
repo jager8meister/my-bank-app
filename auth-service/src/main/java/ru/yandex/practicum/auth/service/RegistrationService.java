@@ -29,27 +29,32 @@ public class RegistrationService {
     private String accountsServiceUrl;
 
     public Mono<Void> register(RegistrationRequest request) {
+        log.info("Starting registration for user: {}", request.login());
         return keycloakAdminService.getAdminToken()
                 .flatMap(adminToken -> keycloakAdminService.userExists(adminToken, request.login())
                         .flatMap(exists -> {
                             if (exists) {
+                                log.warn("Registration rejected - user already exists: {}", request.login());
                                 return Mono.error(new UserAlreadyExistsException(request.login()));
                             }
+                            log.info("User {} not found in Keycloak - proceeding with creation", request.login());
                             return keycloakAdminService.createUser(adminToken, request.login())
                                     .flatMap(userId ->
                                             keycloakAdminService.setPassword(adminToken, userId, request.password())
                                                     .then(keycloakAdminService.getRealmRolesByName(adminToken, DEFAULT_ROLES))
                                                     .flatMap(roles -> keycloakAdminService.assignRoles(adminToken, userId, roles))
                                                     .then(createAccountsRecord(request))
-                                                    .onErrorResume(e ->
-                                                            keycloakAdminService.deleteUser(adminToken, userId)
-                                                                    .onErrorResume(rollbackError -> {
-                                                                        log.error("Rollback failed: could not delete Keycloak user {} after registration error: {}",
-                                                                                userId, rollbackError.getMessage());
-                                                                        return Mono.empty();
-                                                                    })
-                                                                    .then(Mono.error(e))
-                                                    )
+                                                    .doOnSuccess(v -> log.info("Registration completed successfully for user: {}", request.login()))
+                                                    .onErrorResume(e -> {
+                                                        log.error("Registration failed for user: {} - initiating Keycloak rollback: {}", request.login(), e.getMessage());
+                                                        return keycloakAdminService.deleteUser(adminToken, userId)
+                                                                .onErrorResume(rollbackError -> {
+                                                                    log.error("Rollback failed: could not delete Keycloak user {} after registration error: {}",
+                                                                            userId, rollbackError.getMessage());
+                                                                    return Mono.empty();
+                                                                })
+                                                                .then(Mono.error(e));
+                                                    })
                                     );
                         })
                 );
