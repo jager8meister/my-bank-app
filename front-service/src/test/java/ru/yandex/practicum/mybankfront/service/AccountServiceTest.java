@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +27,9 @@ class AccountServiceTest {
 
     @Mock
     private WebClient webClient;
+
+    @Mock
+    private NotificationStore notificationStore;
 
     @Mock
     private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
@@ -45,8 +50,9 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(webClient);
+        accountService = new AccountService(webClient, notificationStore);
         ReflectionTestUtils.setField(accountService, "gatewayUrl", "http://localhost:8080");
+        lenient().when(notificationStore.pop(anyString())).thenReturn(null);
     }
 
     @Test

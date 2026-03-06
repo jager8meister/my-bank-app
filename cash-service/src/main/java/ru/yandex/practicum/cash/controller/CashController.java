@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,7 @@ import ru.yandex.practicum.cash.util.AuthorizationUtils;
 @RequestMapping("/api/cash")
 @RequiredArgsConstructor
 @Validated
+@Slf4j
 @Tag(name = "Cash Operations", description = "Cash deposit and withdrawal operations")
 public class CashController {
 
@@ -48,6 +50,7 @@ public class CashController {
             @RequestBody @Valid CashOperationRequest operation,
             Authentication authentication
     ) {
+        log.info("Cash operation request: login={}, action={}, amount={}", login, operation.action(), operation.value());
         return AuthorizationUtils.checkAuthorizationReactive(
                 login,
                 authentication,

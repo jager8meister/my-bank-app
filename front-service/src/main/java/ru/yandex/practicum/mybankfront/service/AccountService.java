@@ -9,7 +9,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import ru.yandex.practicum.mybankfront.dto.CashAction;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.Map;
 public class AccountService {
 
     private final WebClient webClient;
+    private final NotificationStore notificationStore;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -29,6 +32,7 @@ public class AccountService {
     private String gatewayUrl;
 
     public Mono<Map<String, Object>> getAccountInfo(String login, String accessToken) {
+        log.info("Fetching account info for user: {}", login);
         return webClient.get()
                 .uri(gatewayUrl + "/api/accounts/" + login)
                 .headers(headers -> headers.setBearerAuth(accessToken))
@@ -42,6 +46,7 @@ public class AccountService {
     }
 
     public Mono<Map<String, Object>> updateAccount(String login, String name, LocalDate birthdate, String accessToken) {
+        log.info("Updating account profile for user: {}", login);
         Map<String, Object> request = Map.of("name", name, "birthdate", birthdate);
         return webClient.put()
                 .uri(gatewayUrl + "/api/accounts/" + login)
@@ -65,6 +70,7 @@ public class AccountService {
     }
 
     public Mono<Map<String, Object>> processCash(String login, long value, CashAction action, String accessToken) {
+        log.info("Processing cash action={} amount={} for user: {}", action, value, login);
         Map<String, Object> request = Map.of("value", value, "action", action.toString());
         return webClient.post()
                 .uri(gatewayUrl + "/api/cash/" + login)
@@ -74,19 +80,20 @@ public class AccountService {
                 .bodyToMono(Map.class)
                 .map(map -> (Map<String, Object>) map)
                 .flatMap(cashResponse -> {
-                    if (cashResponse.get("errors") != null || cashResponse.get("info") != null) {
+                    if (cashResponse.get("errors") != null) {
                         return getAccountInfo(login, accessToken)
                                 .map(accountInfo -> {
-                                    if (cashResponse.get("errors") != null) {
-                                        accountInfo.put("errors", cashResponse.get("errors"));
-                                    }
-                                    if (cashResponse.get("info") != null) {
-                                        accountInfo.put("info", cashResponse.get("info"));
-                                    }
+                                    accountInfo.put("errors", cashResponse.get("errors"));
                                     return accountInfo;
                                 });
                     }
-                    return getAccountInfo(login, accessToken);
+                    return getAccountInfo(login, accessToken)
+                            .flatMap(accountInfo -> Mono.delay(Duration.ofMillis(500))
+                                    .map(__ -> {
+                                        String notification = notificationStore.pop(login);
+                                        if (notification != null) accountInfo.put("info", notification);
+                                        return accountInfo;
+                                    }));
                 })
                 .onErrorResume(e -> {
                     log.error("Failed to process cash {} for {}: {}", action, login, e.getMessage());
@@ -103,6 +110,7 @@ public class AccountService {
     }
 
     public Mono<Map<String, Object>> transfer(String login, long value, String toLogin, String accessToken) {
+        log.info("Initiating transfer amount={} from user: {} to: {}", value, login, toLogin);
         Map<String, Object> request = Map.of("senderLogin", login, "recipientLogin", toLogin, "amount", value);
         return webClient.post()
                 .uri(gatewayUrl + "/api/transfer")
@@ -115,21 +123,25 @@ public class AccountService {
                     Boolean success = (Boolean) transferResponse.get("success");
                     String message = (String) transferResponse.get("message");
                     return getAccountInfo(login, accessToken)
-                            .map(accountInfo -> {
+                            .flatMap(accountInfo -> {
                                 if (success != null && success) {
-                                    accountInfo.put("info", "Перевод выполнен успешно. Сумма: " + value + " руб");
+                                    return Mono.delay(Duration.ofMillis(500))
+                                            .map(__ -> {
+                                                String notification = notificationStore.pop(login);
+                                                if (notification != null) accountInfo.put("info", notification);
+                                                return accountInfo;
+                                            });
                                 } else {
                                     accountInfo.put("errors", List.of(message));
+                                    return Mono.just(accountInfo);
                                 }
-                                return accountInfo;
                             });
                 })
                 .onErrorResume(e -> {
                     log.error("Failed to process transfer from {} to {}: {}", login, toLogin, e.getMessage());
                     return getAccountInfo(login, accessToken)
                             .map(accountInfo -> {
-                                String errorMessage = extractErrorMessage(e);
-                                accountInfo.put("errors", List.of(errorMessage));
+                                accountInfo.put("errors", List.of(extractErrorMessage(e)));
                                 return accountInfo;
                             })
                             .onErrorResume(fallbackError -> {

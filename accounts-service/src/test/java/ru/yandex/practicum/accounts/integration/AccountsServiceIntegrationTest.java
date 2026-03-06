@@ -1,25 +1,22 @@
 package ru.yandex.practicum.accounts.integration;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Mono;
 import ru.yandex.practicum.accounts.AbstractIntegrationTest;
-import ru.yandex.practicum.accounts.client.NotificationClient;
+import ru.yandex.practicum.accounts.dto.NotificationEvent;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
 import ru.yandex.practicum.accounts.model.Account;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
 import ru.yandex.practicum.accounts.util.SecurityTestUtils;
 import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 @DisplayName("Accounts Service Integration Tests")
 class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
@@ -31,13 +28,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
     private AccountRepository accountRepository;
 
     @MockitoBean
-    private NotificationClient notificationClient;
-
-    @BeforeEach
-    void setUp() {
-        when(notificationClient.sendNotification(anyString(), anyString(), anyString()))
-                .thenReturn(Mono.empty());
-    }
+    private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
     @Test
     @DisplayName("Should get account info from database")

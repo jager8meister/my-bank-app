@@ -8,7 +8,7 @@ SERVICES := accounts-service auth-service cash-service transfer-service \
 HELM := $(shell which helm 2>/dev/null || \
   find /c/Users/danil/AppData/Local/Microsoft/WinGet -name "helm.exe" 2>/dev/null | head -1)
 
-.PHONY: build deploy undeploy rebuild restart status clean check helm-deps \
+.PHONY: build deploy undeploy rebuild restart status clean check helm-deps logs-kafka \
         $(addprefix build-,$(SERVICES)) \
         $(addprefix logs-,$(SERVICES))
 
@@ -55,6 +55,7 @@ deploy: helm-deps
 	  deployment/cash-service deployment/transfer-service \
 	  deployment/notifications-service deployment/gateway-service \
 	  deployment/front-service -n $(NAMESPACE)
+	kubectl rollout status statefulset/bank-app-kafka -n $(NAMESPACE)
 
 undeploy:
 	"$(HELM)" uninstall $(HELM_RELEASE) -n $(NAMESPACE) --ignore-not-found
@@ -68,6 +69,9 @@ restart:
 	  deployment/cash-service deployment/transfer-service \
 	  deployment/notifications-service deployment/gateway-service \
 	  deployment/front-service deployment/keycloak -n $(NAMESPACE)
+
+logs-kafka:
+	kubectl logs -n $(NAMESPACE) statefulset/bank-app-kafka --tail=100 -f
 
 status:
 	kubectl get all -n $(NAMESPACE)

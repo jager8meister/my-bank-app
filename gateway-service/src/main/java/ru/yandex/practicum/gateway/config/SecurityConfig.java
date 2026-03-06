@@ -1,5 +1,6 @@
 package ru.yandex.practicum.gateway.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -7,12 +8,16 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+@Slf4j
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        log.info("Configuring security: permitAll for /actuator/**, /login/**, /oauth2/**, " +
+                "/api/accounts/register, /api/auth/register, /api/auth/token, /api/auth/refresh; " +
+                "authenticated for /api/** and all other exchanges");
         http
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/**").permitAll()
@@ -28,6 +33,7 @@ public class SecurityConfig {
                 )
                 .oauth2Login(Customizer.withDefaults())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable);
+        log.info("Security filter chain built: JWT resource server + OAuth2 login enabled, CSRF disabled");
         return http.build();
     }
 }

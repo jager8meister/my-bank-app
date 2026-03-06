@@ -20,7 +20,10 @@ public class SecurityTestUtils {
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
-        return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        return new JwtAuthenticationToken(jwt, List.of(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("ROLE_Cash")
+        ));
     }
 
     public static Authentication createServiceAuthentication() {

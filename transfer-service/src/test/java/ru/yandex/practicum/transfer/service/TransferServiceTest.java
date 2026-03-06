@@ -7,9 +7,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import ru.yandex.practicum.transfer.dto.NotificationEvent;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
@@ -18,8 +20,11 @@ import ru.yandex.practicum.transfer.exception.TransferException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,11 +38,14 @@ class TransferServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
+
     private TransferService transferService;
 
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, objectMapper);
+        transferService = new TransferService(webClient, objectMapper, kafkaTemplate);
     }
 
     @Test
@@ -162,6 +170,8 @@ class TransferServiceTest {
                     assertThat(response.recipientBalance()).isEqualTo(1500L);
                 })
                 .verifyComplete();
+
+        verify(kafkaTemplate, times(2)).send(eq("notifications"), anyString(), any(NotificationEvent.class));
     }
 
     @Test

@@ -1,17 +1,20 @@
 package ru.yandex.practicum.auth.config;
 
 import io.r2dbc.spi.ConnectionFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer;
 import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator;
 
+@Slf4j
 @Configuration
 public class DatabaseConfig {
 
     @Bean
     public ConnectionFactoryInitializer initializer(ConnectionFactory connectionFactory) {
+        log.info("Initializing database schema and seed data from schema.sql and data.sql");
         ConnectionFactoryInitializer initializer = new ConnectionFactoryInitializer();
         initializer.setConnectionFactory(connectionFactory);
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();

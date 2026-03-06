@@ -1,5 +1,6 @@
 package ru.yandex.practicum.gateway.filter;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -10,6 +11,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class RequestTrackingFilter implements GlobalFilter, Ordered {
 
@@ -23,7 +25,14 @@ public class RequestTrackingFilter implements GlobalFilter, Ordered {
         String requestId = request.getHeaders().getFirst(REQUEST_ID_HEADER);
         if (requestId == null || requestId.isEmpty()) {
             requestId = UUID.randomUUID().toString();
+            log.debug("Generated new request ID: {} for {} {}",
+                    requestId, request.getMethod(), request.getURI().getPath());
+        } else {
+            log.debug("Reusing existing request ID: {} for {} {}",
+                    requestId, request.getMethod(), request.getURI().getPath());
         }
+        log.info("Tracking request: {} {} [requestId={}]",
+                request.getMethod(), request.getURI().getPath(), requestId);
         String requestTime = String.valueOf(System.currentTimeMillis());
         ServerHttpRequest modifiedRequest = request.mutate()
                 .header(REQUEST_ID_HEADER, requestId)

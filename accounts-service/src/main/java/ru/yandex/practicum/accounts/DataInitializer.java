@@ -1,6 +1,7 @@
 package ru.yandex.practicum.accounts;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DataInitializer {
 
     private static final long IVANOV_INITIAL_BALANCE = 100L;
@@ -25,8 +27,10 @@ public class DataInitializer {
 
     @EventListener(ApplicationReadyEvent.class)
     public Mono<Void> initData() {
+        log.info("Checking whether demo accounts need to be seeded");
         return accountRepository.count()
                 .filter(count -> count == 0)
+                .doOnNext(count -> log.info("No accounts found — seeding demo accounts"))
                 .flatMapMany(count -> Flux.just(
                         new Account(null, 0L, "ivanov", "Иванов Иван",
                                 LocalDate.of(2001, 1, 1), IVANOV_INITIAL_BALANCE),
@@ -36,6 +40,8 @@ public class DataInitializer {
                                 LocalDate.of(1990, 10, 20), SIDOROV_INITIAL_BALANCE)
                 ))
                 .flatMap(accountRepository::save)
-                .then();
+                .doOnNext(saved -> log.debug("Demo account seeded: login='{}'", saved.getLogin()))
+                .then()
+                .doOnSuccess(v -> log.info("Demo account seeding complete"));
     }
 }

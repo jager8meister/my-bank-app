@@ -1,7 +1,6 @@
 package ru.yandex.practicum.gateway.filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -13,10 +12,9 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 
+@Slf4j
 @Component
 public class LoggingGlobalFilter implements GlobalFilter, Ordered {
-
-    private static final Logger log = LoggerFactory.getLogger(LoggingGlobalFilter.class);
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -24,14 +22,18 @@ public class LoggingGlobalFilter implements GlobalFilter, Ordered {
         Instant startTime = Instant.now();
         log.info("Gateway Request: {} {} from {}",
                 request.getMethod(),
-                request.getURI(),
+                request.getURI().getPath(),
                 request.getRemoteAddress());
+        log.debug("Gateway Request details: method={}, path={}, query={}",
+                request.getMethod(),
+                request.getURI().getPath(),
+                request.getURI().getQuery());
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
             ServerHttpResponse response = exchange.getResponse();
             Duration duration = Duration.between(startTime, Instant.now());
             log.info("Gateway Response: {} {} - Status: {} - Duration: {}ms",
                     request.getMethod(),
-                    request.getURI(),
+                    request.getURI().getPath(),
                     response.getStatusCode(),
                     duration.toMillis());
         }));

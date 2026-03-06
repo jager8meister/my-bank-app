@@ -37,11 +37,22 @@ public class DataInitializer {
                 .flatMap(login -> Mono.fromCallable(
                                 () -> new User(null, login, passwordEncoder.encode("password"), "USER"))
                         .subscribeOn(Schedulers.boundedElastic()))
-                .flatMap(userRepository::save)
+                .flatMap(user -> {
+                    log.info("Seeding default user: {}", user.getLogin());
+                    return userRepository.save(user);
+                })
                 .then();
 
         return userRepository.count()
+                .doOnNext(count -> {
+                    if (count == 0) {
+                        log.info("Database is empty - seeding default users");
+                    } else {
+                        log.info("Database already has {} user(s) - skipping seed", count);
+                    }
+                })
                 .filter(count -> count == 0)
-                .flatMap(count -> transactionalOperator.transactional(insert));
+                .flatMap(count -> transactionalOperator.transactional(insert))
+                .doOnSuccess(v -> log.info("DataInitializer completed successfully"));
     }
 }

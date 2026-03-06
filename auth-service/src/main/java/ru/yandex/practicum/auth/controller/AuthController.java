@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,7 @@ import ru.yandex.practicum.auth.service.RegistrationService;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -54,6 +56,7 @@ public class AuthController {
     })
     @PostMapping("/register")
     public Mono<Void> register(@RequestBody @Valid RegistrationRequest request) {
+        log.info("POST /api/auth/register - registering user: {}", request.login());
         return registrationService.register(request);
     }
 
@@ -68,6 +71,7 @@ public class AuthController {
     })
     @PostMapping("/login")
     public Mono<AuthResponse> login(@RequestBody @Valid AuthRequest request) {
+        log.info("POST /api/auth/login - authentication attempt for user: {}", request.login());
         return authService.authenticate(request);
     }
 
@@ -84,6 +88,7 @@ public class AuthController {
             @Parameter(description = "The login (username) to look up")
             @PathVariable @NotBlank(message = "Login is required") String login
     ) {
+        log.info("GET /api/auth/validate/{} - validating user existence", login);
         return authService.validateUser(login);
     }
 
@@ -98,15 +103,24 @@ public class AuthController {
     })
     @PostMapping("/token")
     public Mono<ResponseEntity<Object>> getToken(@RequestBody @Valid AuthRequest request) {
+        log.info("POST /api/auth/token - Keycloak token request for user: {}", request.login());
         return keycloakAdminService.getUserToken(request.login(), request.password())
-                .<ResponseEntity<Object>>map(token -> ResponseEntity.ok(token))
+                .<ResponseEntity<Object>>map(token -> {
+                    log.info("Keycloak token issued successfully for user: {}", request.login());
+                    return ResponseEntity.ok(token);
+                })
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode().value() == 401) {
+                        log.warn("Keycloak token request rejected (401) for user: {}", request.login());
                         return Mono.just(ResponseEntity.status(401).body(Map.of("error", "Неверный логин или пароль")));
                     }
+                    log.error("Keycloak token request failed for user: {} - status: {}", request.login(), e.getStatusCode().value());
                     return Mono.just(ResponseEntity.status(500).body(Map.of("error", "Ошибка авторизации")));
                 })
-                .onErrorResume(e -> Mono.just(ResponseEntity.status(500).body(Map.of("error", "Ошибка авторизации"))));
+                .onErrorResume(e -> {
+                    log.error("Unexpected error during token request for user: {} - {}", request.login(), e.getMessage());
+                    return Mono.just(ResponseEntity.status(500).body(Map.of("error", "Ошибка авторизации")));
+                });
     }
 
     @Operation(
@@ -122,8 +136,15 @@ public class AuthController {
             @Parameter(description = "The refresh token previously issued by Keycloak")
             @RequestParam String refreshToken
     ) {
+        log.info("POST /api/auth/refresh - token refresh request received");
         return keycloakAdminService.refreshUserToken(refreshToken)
-                .<ResponseEntity<Object>>map(token -> ResponseEntity.ok(token))
-                .onErrorResume(e -> Mono.just(ResponseEntity.status(401).body(Map.of("error", "Сессия истекла, войдите снова"))));
+                .<ResponseEntity<Object>>map(token -> {
+                    log.info("Token refreshed successfully");
+                    return ResponseEntity.ok(token);
+                })
+                .onErrorResume(e -> {
+                    log.warn("Token refresh failed: {}", e.getMessage());
+                    return Mono.just(ResponseEntity.status(401).body(Map.of("error", "Сессия истекла, войдите снова")));
+                });
     }
 }

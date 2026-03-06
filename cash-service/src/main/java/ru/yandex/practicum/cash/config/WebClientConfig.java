@@ -1,5 +1,6 @@
 package ru.yandex.practicum.cash.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
@@ -12,10 +13,12 @@ import org.springframework.security.oauth2.client.web.server.ServerOAuth2Authori
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
+@Slf4j
 public class WebClientConfig {
 
     @Bean
     public WebClient.Builder webClientBuilder(ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+        log.info("Initializing WebClient with OAuth2 client credentials filter (registration: keycloak)");
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2 =
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
         oauth2.setDefaultClientRegistrationId("keycloak");

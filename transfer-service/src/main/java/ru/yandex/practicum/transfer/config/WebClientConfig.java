@@ -1,5 +1,6 @@
 package ru.yandex.practicum.transfer.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
@@ -12,10 +13,12 @@ import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2Autho
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
+@Slf4j
 public class WebClientConfig {
 
     @Bean
     public WebClient.Builder webClientBuilder(ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+        log.info("Configuring WebClient.Builder with OAuth2 client credentials filter (registration: keycloak)");
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2 =
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
         oauth2.setDefaultClientRegistrationId("keycloak");
@@ -25,6 +28,7 @@ public class WebClientConfig {
 
     @Bean
     public WebClient webClient(WebClient.Builder webClientBuilder) {
+        log.info("Building WebClient for accounts-service communication");
         return webClientBuilder.build();
     }
 
@@ -32,6 +36,7 @@ public class WebClientConfig {
     public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
             ReactiveClientRegistrationRepository clientRegistrationRepository,
             ServerOAuth2AuthorizedClientRepository authorizedClientRepository) {
+        log.info("Initializing ReactiveOAuth2AuthorizedClientManager with client_credentials grant");
         ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
                 ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
                         .clientCredentials()

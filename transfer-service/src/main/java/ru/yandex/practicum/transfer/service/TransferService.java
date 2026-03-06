@@ -5,16 +5,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import ru.yandex.practicum.transfer.dto.NotificationEvent;
 import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
 import ru.yandex.practicum.transfer.exception.InvalidTransferException;
 import ru.yandex.practicum.transfer.exception.TransferException;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -25,6 +28,8 @@ public class TransferService {
     private final WebClient webClient;
 
     private final ObjectMapper objectMapper;
+
+    private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
@@ -41,6 +46,8 @@ public class TransferService {
         if (request.senderLogin().equals(request.recipientLogin())) {
             return Mono.error(new InvalidTransferException("Cannot transfer to yourself"));
         }
+        log.info("Calling accounts-service to execute transfer: from={}, to={}, amount={}",
+                request.senderLogin(), request.recipientLogin(), request.amount());
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("http")
@@ -54,6 +61,8 @@ public class TransferService {
                 .retrieve()
                 .bodyToMono(TransferResult.class)
                 .map(result -> {
+                    log.debug("Received transfer result from accounts-service: senderBalance={}, recipientBalance={}",
+                            result.senderBalance(), result.recipientBalance());
                     log.info("Transfer successful. Sender new balance: {}, Recipient new balance: {}",
                             result.senderBalance(), result.recipientBalance());
                     return new TransferResponse(
@@ -62,6 +71,19 @@ public class TransferService {
                             result.senderBalance(),
                             result.recipientBalance()
                     );
+                })
+                .doOnSuccess(response -> {
+                    String now = LocalDateTime.now().toString();
+                    log.info("Publishing TRANSFER_SENT event to Kafka for sender '{}'", request.senderLogin());
+                    kafkaTemplate.send("notifications", request.senderLogin(),
+                            new NotificationEvent(request.senderLogin(), "TRANSFER_SENT",
+                                    "Вы перевели " + request.amount() + " руб пользователю " + request.recipientLogin()
+                                            + ". Новый баланс: " + response.senderBalance() + " руб", now));
+                    log.info("Publishing TRANSFER_RECEIVED event to Kafka for recipient '{}'", request.recipientLogin());
+                    kafkaTemplate.send("notifications", request.recipientLogin(),
+                            new NotificationEvent(request.recipientLogin(), "TRANSFER_RECEIVED",
+                                    "Вы получили " + request.amount() + " руб от пользователя " + request.senderLogin()
+                                            + ". Новый баланс: " + response.recipientBalance() + " руб", now));
                 })
                 .onErrorResume(WebClientResponseException.class, e -> {
                     log.error("Transfer failed with HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());

@@ -5,11 +5,10 @@ metadata:
   labels:
     app: transfer-service
 data:
-  TRANSFER_SERVICE_PORT: "8085"
-  ACCOUNTS_SERVICE_HOST: "accounts-service"
-  ACCOUNTS_SERVICE_PORT: "8081"
-  NOTIFICATIONS_SERVICE_HOST: "notifications-service"
-  NOTIFICATIONS_SERVICE_PORT: "8086"
+  TRANSFER_SERVICE_PORT: {{ .Values.containerPort | quote }}
+  ACCOUNTS_SERVICE_HOST: {{ .Values.global.services.accounts.host | quote }}
+  ACCOUNTS_SERVICE_PORT: {{ .Values.global.services.accounts.port | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.global.kafka.bootstrapServers | quote }}
   KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
-  KEYCLOAK_INTERNAL_URL: "http://keycloak:9090"
+  KEYCLOAK_INTERNAL_URL: {{ .Values.global.keycloak.internalUrl | quote }}
   KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}
