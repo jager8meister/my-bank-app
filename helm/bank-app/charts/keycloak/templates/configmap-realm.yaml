@@ -216,27 +216,6 @@ data:
           "description": "OpenID Connect scope for allowed web origins",
           "protocol": "openid-connect",
           "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" }
-        },
-        {
-          "name": "offline_access",
-          "description": "OpenID Connect built-in scope: offline_access",
-          "protocol": "openid-connect",
-          "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
-        },
-        {
-          "name": "address",
-          "protocol": "openid-connect",
-          "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
-        },
-        {
-          "name": "phone",
-          "protocol": "openid-connect",
-          "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" }
-        },
-        {
-          "name": "microprofile-jwt",
-          "protocol": "openid-connect",
-          "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" }
         }
       ],
       "defaultDefaultClientScopes": ["profile","openid","email","roles","web-origins","acr"],
