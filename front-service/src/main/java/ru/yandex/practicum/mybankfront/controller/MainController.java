@@ -42,7 +42,12 @@ public class MainController {
     }
 
     @GetMapping("/login")
-    public String loginPage() {
+    public String loginPage(jakarta.servlet.http.HttpSession session, Model model) {
+        String notification = (String) session.getAttribute("flash_notification");
+        if (notification != null) {
+            session.removeAttribute("flash_notification");
+            model.addAttribute("info", notification);
+        }
         return "login";
     }
 

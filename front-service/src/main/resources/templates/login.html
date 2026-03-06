@@ -8,6 +8,17 @@
 </head>
 
 <body class="bg-light">
+
+<div id="notif-container"
+     style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;min-width:320px;max-width:600px;display:flex;flex-direction:column;gap:0.5rem;">
+    <div th:if="${info}"
+         style="background:#198754;color:#fff;border-radius:6px;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.75rem;box-shadow:0 4px 12px rgba(0,0,0,.25);">
+        <span th:text="${info}" style="flex:1;font-weight:600;"></span>
+        <button onclick="this.parentElement.remove()"
+                style="background:none;border:none;color:#fff;font-size:1.4rem;line-height:1;cursor:pointer;padding:0;">&#x2715;</button>
+    </div>
+</div>
+
 <div class="container p-2">
     <div class="row p-2">
         <div class="col">
@@ -19,9 +30,6 @@
             <div class="card">
                 <div class="card-header">Вход в аккаунт</div>
                 <div class="card-body">
-                    <div class="alert alert-success" role="alert" th:if="${param.registered}">
-                        Регистрация прошла успешно! Войдите в аккаунт.
-                    </div>
                     <div class="d-grid mb-3">
                         <a href="/oauth2/authorization/keycloak"
                            class="btn btn-lg d-flex align-items-center justify-content-center gap-2"
@@ -40,6 +48,11 @@
         </div>
     </div>
 </div>
+<script>
+    document.querySelectorAll('#notif-container > div').forEach(function(el) {
+        setTimeout(function() { el.remove(); }, 30000);
+    });
+</script>
 </body>
 
 </html>

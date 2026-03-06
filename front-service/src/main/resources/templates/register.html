@@ -9,6 +9,20 @@
 </head>
 
 <body class="bg-light">
+
+<div id="notif-container"
+     style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;min-width:320px;max-width:600px;display:flex;flex-direction:column;gap:0.5rem;">
+
+    <div th:if="${error}"
+         style="background:#dc3545;color:#fff;border-radius:6px;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.75rem;box-shadow:0 4px 12px rgba(0,0,0,.25);">
+        <span th:text="${error}" style="flex:1;font-weight:600;"></span>
+        <button onclick="this.parentElement.remove()"
+                style="background:none;border:none;color:#fff;font-size:1.4rem;line-height:1;cursor:pointer;padding:0;">&#x2715;</button>
+    </div>
+
+
+</div>
+
 <div class="container p-2">
     <div class="row p-2">
         <div class="col">
@@ -24,10 +38,6 @@
                     Регистрация
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-danger" role="alert" th:if="${error}" th:text="${error}"></div>
-                    <div class="alert alert-success" role="alert" th:if="${param.success}">
-                        Регистрация прошла успешно! Теперь вы можете <a href="/login">войти</a>.
-                    </div>
                     <form method="post" th:action="@{/register}" id="registerForm">
                         <div class="form-group mb-3">
                             <h6><label for="login">Логин</label></h6>
@@ -68,6 +78,11 @@
     </div>
 </div>
 
+<script>
+    document.querySelectorAll('#notif-container > div').forEach(function(el) {
+        setTimeout(function() { el.remove(); }, 30000);
+    });
+</script>
 <script>
     // Validate age: must be 18+
     document.getElementById('birthdate').addEventListener('change', function () {
