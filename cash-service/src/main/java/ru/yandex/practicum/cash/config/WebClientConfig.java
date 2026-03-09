@@ -1,5 +1,6 @@
 package ru.yandex.practicum.cash.config;
 
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,12 +18,15 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient.Builder webClientBuilder(ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+    public WebClient.Builder webClientBuilder(
+            ReactiveOAuth2AuthorizedClientManager authorizedClientManager,
+            ObservationRegistry observationRegistry) {
         log.info("Initializing WebClient with OAuth2 client credentials filter (registration: keycloak)");
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2 =
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
         oauth2.setDefaultClientRegistrationId("keycloak");
         return WebClient.builder()
+                .observationRegistry(observationRegistry)
                 .filter(oauth2);
     }
 

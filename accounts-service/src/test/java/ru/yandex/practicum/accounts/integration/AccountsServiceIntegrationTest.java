@@ -145,7 +145,7 @@ class AccountsServiceIntegrationTest extends AbstractIntegrationTest {
         webTestClient
                 .mutateWith(SecurityMockServerConfigurers.mockAuthentication(auth))
                 .post()
-                .uri("/api/accounts/transfer?from=ivanov&to=petrov&amount=500")
+                .uri("/api/accounts/internal/transfer?from=ivanov&to=petrov&amount=500")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()

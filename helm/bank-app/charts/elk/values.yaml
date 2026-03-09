@@ -1,0 +1,11 @@
+externalHost: host.docker.internal
+
+logstash:
+  tcpPort: 5000
+  apiPort: 9600
+
+elasticsearch:
+  port: 9200
+
+kibana:
+  port: 5601

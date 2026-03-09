@@ -16,3 +16,5 @@ data:
   KEYCLOAK_ADMIN: {{ .Values.global.keycloak.adminUser | quote }}
   ACCOUNTS_SERVICE_HOST: {{ .Values.global.services.accounts.host | quote }}
   ACCOUNTS_SERVICE_PORT: {{ .Values.global.services.accounts.port | quote }}
+  LOGSTASH_HOST: "logstash"
+  LOGSTASH_PORT: "5000"

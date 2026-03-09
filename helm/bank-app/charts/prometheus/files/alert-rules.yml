@@ -1,0 +1,74 @@
+groups:
+  - name: bank.alerts
+    rules:
+      - alert: HighHttp5xxErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: "Service {{ $labels.job }} has more than 0.1 req/s with 5xx status"
+
+      - alert: HighHttp4xxErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"4.."}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: info
+        annotations:
+          summary: "High 4xx error rate detected"
+          description: "Service {{ $labels.job }} has more than 0.5 req/s with 4xx status"
+
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "Service {{ $labels.job }} p95 latency is above 2 seconds"
+
+      - alert: CashWithdrawalFailures
+        expr: increase(cash_withdrawal_failures_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Multiple cash withdrawal failures"
+          description: "More than 5 failed withdrawal attempts in 5 minutes for login {{ $labels.login }}"
+
+      - alert: TransferFailures
+        expr: increase(transfer_failures_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Multiple transfer failures"
+          description: "More than 5 failed transfers in 5 minutes"
+
+      - alert: NotificationSendFailures
+        expr: increase(notification_send_failures_total[5m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Notification send failures detected"
+          description: "More than 3 notification failures in 5 minutes for login {{ $labels.login }}"
+
+      - alert: JvmMemoryHigh
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap memory usage is high"
+          description: "Service {{ $labels.job }} heap memory usage is above 85%"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "Service {{ $labels.job }} has been unreachable for more than 1 minute"

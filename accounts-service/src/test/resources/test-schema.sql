@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS accounts_schema.accounts (
     login VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     birthdate DATE NOT NULL,
-    balance INTEGER NOT NULL DEFAULT 0
+    balance BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS accounts_schema.outbox_events (

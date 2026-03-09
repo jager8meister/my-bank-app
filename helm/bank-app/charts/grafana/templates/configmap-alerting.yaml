@@ -1,0 +1,254 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting
+  labels:
+    app: grafana
+data:
+  alerting.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: Bank App Alerts
+        folder: Bank App Alerts
+        interval: 1m
+        rules:
+          - uid: bank-high-5xx-rate
+            title: High HTTP 5xx Error Rate
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: High HTTP 5xx error rate detected
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false
+
+          - uid: bank-cash-withdrawal-failures
+            title: Cash Withdrawal Failures
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'sum(increase(cash_withdrawal_failures_total[5m]))'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: More than 5 failed cash withdrawals in 5 minutes
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false
+
+          - uid: bank-transfer-failures
+            title: Transfer Failures
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'sum(increase(transfer_failures_total[5m]))'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: More than 5 failed transfers in 5 minutes
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false
+
+          - uid: bank-notification-failures
+            title: Notification Send Failures
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'sum(increase(notification_send_failures_total[5m]))'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 3
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: Notification send failures detected
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false
+
+          - uid: bank-high-latency
+            title: High Request Latency p95
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 2
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: p95 request latency above 2 seconds
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false
+
+          - uid: bank-jvm-memory-high
+            title: JVM Heap Memory High
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  expr: 'max(jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"})'
+                  refId: A
+                  instant: false
+              - refId: B
+                datasourceUid: '-100'
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.85
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+                  type: classic_conditions
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: JVM heap memory usage above 85%
+            noDataState: NoData
+            execErrState: Error
+            isPaused: false

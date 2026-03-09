@@ -9,7 +9,7 @@ data:
     #!/bin/sh
     set -e
 
-    KEYCLOAK_URL="${KEYCLOAK_INTERNAL_URL:-http://keycloak:9090}"
+    KEYCLOAK_URL="${KEYCLOAK_INTERNAL_URL:-http://keycloak:9095}"
     REALM="${KEYCLOAK_REALM:-bank-realm}"
     ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
     ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}"

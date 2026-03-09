@@ -1,6 +1,7 @@
 package ru.yandex.practicum.transfer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,8 @@ public class TransferService {
 
     private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
+    private final MeterRegistry meterRegistry;
+
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
 
@@ -60,6 +63,9 @@ public class TransferService {
                         .build())
                 .retrieve()
                 .bodyToMono(TransferResult.class)
+                .doOnError(e -> meterRegistry.counter("transfer.failures",
+                        "from_login", request.senderLogin(),
+                        "to_login", request.recipientLogin()).increment())
                 .map(result -> {
                     log.debug("Received transfer result from accounts-service: senderBalance={}, recipientBalance={}",
                             result.senderBalance(), result.recipientBalance());

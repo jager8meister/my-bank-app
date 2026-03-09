@@ -3,6 +3,7 @@ package ru.yandex.practicum.mybankfront.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -32,6 +33,9 @@ class AccountServiceTest {
     private NotificationStore notificationStore;
 
     @Mock
+    private ObjectMapper objectMapper;
+
+    @Mock
     private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
 
     @Mock
@@ -50,7 +54,7 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(webClient, notificationStore);
+        accountService = new AccountService(webClient, notificationStore, objectMapper);
         ReflectionTestUtils.setField(accountService, "gatewayUrl", "http://localhost:8080");
         lenient().when(notificationStore.pop(anyString())).thenReturn(null);
     }

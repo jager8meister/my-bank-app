@@ -1,0 +1,13 @@
+image: "openzipkin/zipkin:3"
+replicas: 1
+containerPort: 9411
+service:
+  type: LoadBalancer
+  port: 9411
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
