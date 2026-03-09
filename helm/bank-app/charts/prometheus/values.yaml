@@ -1,0 +1,14 @@
+image: "prom/prometheus:v3.2.1"
+replicas: 1
+containerPort: 9090
+service:
+  type: LoadBalancer
+  port: 9090
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+retention: "7d"

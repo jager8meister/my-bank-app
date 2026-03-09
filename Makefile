@@ -9,6 +9,8 @@ HELM := $(shell which helm 2>/dev/null || \
   find /c/Users/danil/AppData/Local/Microsoft/WinGet -name "helm.exe" 2>/dev/null | head -1)
 
 .PHONY: build deploy undeploy rebuild restart status clean check helm-deps logs-kafka \
+        logs-zipkin logs-prometheus logs-grafana \
+        elk-up elk-down elk-logs \
         $(addprefix build-,$(SERVICES)) \
         $(addprefix logs-,$(SERVICES))
 
@@ -46,7 +48,7 @@ helm-deps:
 		"$(HELM)" dependency update helm/bank-app/charts/$$svc; \
 	done
 
-deploy: helm-deps
+deploy: helm-deps elk-up
 	"$(HELM)" upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 	  -n $(NAMESPACE) --create-namespace \
 	  --wait --rollback-on-failure --timeout 10m
@@ -54,10 +56,11 @@ deploy: helm-deps
 	  deployment/accounts-service deployment/auth-service \
 	  deployment/cash-service deployment/transfer-service \
 	  deployment/notifications-service deployment/gateway-service \
-	  deployment/front-service -n $(NAMESPACE)
+	  deployment/front-service \
+	  deployment/zipkin deployment/prometheus deployment/grafana -n $(NAMESPACE)
 	kubectl rollout status statefulset/bank-app-kafka -n $(NAMESPACE)
 
-undeploy:
+undeploy: elk-down
 	"$(HELM)" uninstall $(HELM_RELEASE) -n $(NAMESPACE) --ignore-not-found
 	kubectl delete pvc --all -n $(NAMESPACE) --ignore-not-found
 
@@ -72,6 +75,24 @@ restart:
 
 logs-kafka:
 	kubectl logs -n $(NAMESPACE) statefulset/bank-app-kafka --tail=100 -f
+
+logs-zipkin:
+	kubectl logs -n $(NAMESPACE) deployment/zipkin --tail=100 -f
+
+logs-prometheus:
+	kubectl logs -n $(NAMESPACE) deployment/prometheus --tail=100 -f
+
+logs-grafana:
+	kubectl logs -n $(NAMESPACE) deployment/grafana --tail=100 -f
+
+elk-up:
+	docker compose -f elk/docker-compose.yml up -d
+
+elk-down:
+	docker compose -f elk/docker-compose.yml down
+
+elk-logs:
+	docker compose -f elk/docker-compose.yml logs -f
 
 status:
 	kubectl get all -n $(NAMESPACE)

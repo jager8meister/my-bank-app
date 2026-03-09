@@ -1,12 +1,15 @@
 package ru.yandex.practicum.transfer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -17,6 +20,8 @@ import ru.yandex.practicum.transfer.dto.TransferResponse;
 import ru.yandex.practicum.transfer.exception.InsufficientFundsException;
 import ru.yandex.practicum.transfer.exception.InvalidTransferException;
 import ru.yandex.practicum.transfer.exception.TransferException;
+
+import io.micrometer.core.instrument.Counter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TransferService Unit Tests")
 class TransferServiceTest {
 
@@ -41,11 +47,16 @@ class TransferServiceTest {
     @Mock
     private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
+    @Mock
+    private MeterRegistry meterRegistry;
+
     private TransferService transferService;
 
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, objectMapper, kafkaTemplate);
+        Counter mockCounter = mock(Counter.class);
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
+        transferService = new TransferService(webClient, objectMapper, kafkaTemplate, meterRegistry);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.config;
 
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -11,15 +12,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient webClient() {
+    public WebClient webClient(ObservationRegistry observationRegistry) {
         log.info("Initializing default WebClient bean");
-        return WebClient.create();
+        return WebClient.builder()
+                .observationRegistry(observationRegistry)
+                .build();
     }
 
     @Bean
     @Qualifier("plainWebClient")
-    public WebClient plainWebClient() {
+    public WebClient plainWebClient(ObservationRegistry observationRegistry) {
         log.info("Initializing plainWebClient bean");
-        return WebClient.create();
+        return WebClient.builder()
+                .observationRegistry(observationRegistry)
+                .build();
     }
 }

@@ -2,6 +2,7 @@ package ru.yandex.practicum.cash.service;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,8 @@ public class CashService {
 
     private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
+    private final MeterRegistry meterRegistry;
+
     @Value("${services.accounts.host:accounts-service}")
     private String accountsServiceHost;
 
@@ -55,8 +58,12 @@ public class CashService {
                 .onStatus(HttpStatusCode::is4xxClientError, response -> {
                     log.error("4xx error from accounts-service: status={}", response.statusCode());
                     if (response.statusCode() == HttpStatus.BAD_REQUEST) {
+                        if (operation.action() == CashAction.GET) {
+                            meterRegistry.counter("cash.withdrawal.failures", "login", login, "reason", "insufficient_funds").increment();
+                        }
                         return Mono.error(new InsufficientFundsException("Недостаточно средств на счету"));
                     }
+                    meterRegistry.counter("cash.operation.failures", "login", login, "reason", "client_error", "action", operation.action().name()).increment();
                     return Mono.error(new CashOperationException("Ошибка операции: " + response.statusCode()));
                 })
                 .onStatus(HttpStatusCode::is5xxServerError, response -> {
@@ -99,6 +106,7 @@ public class CashService {
 
     private Mono<CashResponse> fallbackCashOperation(String login, CashOperationRequest operation, Exception ex) {
         log.error("Circuit breaker fallback triggered for cash operation. Service unavailable.", ex);
+        meterRegistry.counter("cash.operation.failures", "login", login, "reason", "circuit_breaker", "action", operation.action().name()).increment();
         return Mono.error(new CashOperationException("Сервис временно недоступен. Попробуйте позже."));
     }
 }

@@ -12,3 +12,5 @@ data:
   KEYCLOAK_EXTERNAL_URL: {{ .Values.global.keycloak.externalUrl | quote }}
   KEYCLOAK_INTERNAL_URL: {{ .Values.global.keycloak.internalUrl | quote }}
   KEYCLOAK_REALM: {{ .Values.global.keycloak.realm | quote }}
+  LOGSTASH_HOST: "logstash"
+  LOGSTASH_PORT: "5000"

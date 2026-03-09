@@ -46,10 +46,6 @@ public class AuthService {
         log.info("Validating user existence for login: {}", login);
         return userRepository.findByLogin(login)
                 .doOnNext(user -> log.debug("User found: {}", login))
-                .doOnSuccess(user -> {
-                    if (user == null) {
-                        log.warn("User not found for login: {}", login);
-                    }
-                });
+                .switchIfEmpty(Mono.fromRunnable(() -> log.warn("User not found for login: {}", login)));
     }
 }

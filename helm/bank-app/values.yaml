@@ -6,8 +6,8 @@ global:
     user: bankuser
     password: bankpass
   keycloak:
-    internalUrl: "http://keycloak:9090"
-    externalUrl: "http://localhost:9090"
+    internalUrl: "http://keycloak:9095"
+    externalUrl: "http://localhost:9095"
     realm: bank-realm
     adminUser: admin
     adminPassword: admin
@@ -82,3 +82,21 @@ front-service:
 kafka:
   image: "apache/kafka:3.9.0"
   storageSize: "1Gi"
+
+zipkin:
+  image: "openzipkin/zipkin:3"
+  replicas: 1
+
+prometheus:
+  image: "prom/prometheus:v3.2.1"
+  replicas: 1
+  retention: "7d"
+
+grafana:
+  image: "grafana/grafana:11.4.0"
+  replicas: 1
+  adminUser: admin
+  adminPassword: admin
+
+elk:
+  externalHost: host.docker.internal

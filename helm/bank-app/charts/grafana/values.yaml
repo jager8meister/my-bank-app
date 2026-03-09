@@ -1,0 +1,15 @@
+image: "grafana/grafana:11.4.0"
+replicas: 1
+containerPort: 3000
+service:
+  type: LoadBalancer
+  port: 3000
+adminUser: admin
+adminPassword: admin
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

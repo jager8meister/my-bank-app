@@ -1,0 +1,42 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  labels:
+    app: logstash
+spec:
+  type: ExternalName
+  externalName: {{ .Values.externalHost }}
+  ports:
+    - port: {{ .Values.logstash.tcpPort }}
+      targetPort: {{ .Values.logstash.tcpPort }}
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  type: ExternalName
+  externalName: {{ .Values.externalHost }}
+  ports:
+    - port: {{ .Values.elasticsearch.port }}
+      targetPort: {{ .Values.elasticsearch.port }}
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  labels:
+    app: kibana
+spec:
+  type: ExternalName
+  externalName: {{ .Values.externalHost }}
+  ports:
+    - port: {{ .Values.kibana.port }}
+      targetPort: {{ .Values.kibana.port }}
+      protocol: TCP

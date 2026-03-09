@@ -1,0 +1,5 @@
+apiVersion: v2
+name: prometheus
+description: Prometheus metrics collection for bank app
+type: application
+version: 1.0.0

@@ -1,13 +1,15 @@
 package ru.yandex.practicum.mybankfront.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private final AccountService accountService;
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
     @ExceptionHandler({ConstraintViolationException.class, MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
     public String handleInputValidationException(Exception e, Model model, HttpServletRequest request) {
@@ -35,11 +38,12 @@ public class GlobalExceptionHandler {
     private String loadAccountPage(Model model, String errorMessage, HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         try {
-            if (authentication != null && authentication.isAuthenticated()) {
-                String login = authentication.getName();
-                HttpSession httpSession = request.getSession(false);
-                String accessToken = httpSession != null
-                        ? (String) httpSession.getAttribute("ACCESS_TOKEN")
+            if (authentication instanceof OAuth2AuthenticationToken oauth2) {
+                String login = oauth2.getName();
+                OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
+                        oauth2.getAuthorizedClientRegistrationId(), login);
+                String accessToken = (client != null && client.getAccessToken() != null)
+                        ? client.getAccessToken().getTokenValue()
                         : null;
                 if (accessToken != null) {
                     Map<String, Object> data = accountService.getAccountInfo(login, accessToken).block();

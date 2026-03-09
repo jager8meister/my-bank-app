@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -8,19 +9,24 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import ru.yandex.practicum.mybankfront.dto.NotificationEvent;
 import ru.yandex.practicum.mybankfront.service.AccountService;
 import ru.yandex.practicum.mybankfront.service.RegistrationService;
+import ru.yandex.practicum.mybankfront.store.NotificationStore;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,7 +34,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,7 +53,22 @@ class RegistrationControllerTest {
     private AccountService accountService;
 
     @MockitoBean
+    private OAuth2AuthorizedClientService authorizedClientService;
+
+    @MockitoBean
+    private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
+
+    @MockitoBean
+    private NotificationStore notificationStore;
+
+    @MockitoBean
     private WebClient webClient;
+
+    @BeforeEach
+    void setup() {
+        // Return a message immediately so the controller doesn't wait for Kafka timeout
+        when(notificationStore.pop(anyString())).thenReturn("Уведомление");
+    }
 
     @TestConfiguration
     @EnableWebSecurity
@@ -104,7 +124,7 @@ class RegistrationControllerTest {
                                 .andExpect(request().asyncStarted())
                                 .andReturn()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?registered=true"));
+                .andExpect(redirectedUrl("/login"));
     }
 
     @Test
@@ -121,9 +141,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -144,9 +163,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -165,9 +183,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -186,9 +203,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -207,9 +223,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -230,9 +245,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -251,9 +265,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
 
         verify(registrationService, never()).register(any());
     }
@@ -275,9 +288,8 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
     }
 
     @Test
@@ -294,9 +306,9 @@ class RegistrationControllerTest {
                 .andReturn();
 
         mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attribute("login", "ab"))
-                .andExpect(model().attribute("name", "Иван Иванов"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/register"));
+
+        verify(registrationService, never()).register(any());
     }
 }

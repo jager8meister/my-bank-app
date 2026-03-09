@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  labels:
+    app: grafana
+data:
+  http-metrics.json: |
+{{ .Files.Get "files/http-metrics.json" | indent 4 }}
+  jvm-metrics.json: |
+{{ .Files.Get "files/jvm-metrics.json" | indent 4 }}
+  business-metrics.json: |
+{{ .Files.Get "files/business-metrics.json" | indent 4 }}

@@ -26,7 +26,7 @@ public class AccountService {
     private final WebClient webClient;
     private final NotificationStore notificationStore;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Value("${gateway.url:http://localhost:8080}")
     private String gatewayUrl;
@@ -39,6 +39,7 @@ public class AccountService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(map -> (Map<String, Object>) map)
+                .doOnNext(map -> log.debug("Account info for {}: balance={}, accounts={}", login, map.get("sum"), map.containsKey("accounts") ? ((List<?>) map.get("accounts")).size() : 0))
                 .onErrorResume(e -> {
                     log.error("Failed to get account info for {}: {}", login, e.getMessage());
                     return Mono.just(createErrorResponse(extractErrorMessage(e)));

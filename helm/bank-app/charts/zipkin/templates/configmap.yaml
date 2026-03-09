@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zipkin-config
+  labels:
+    app: zipkin
+data:
+  STORAGE_TYPE: "mem"
+  JAVA_OPTS: "-Xms128m -Xmx256m"

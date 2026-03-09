@@ -20,7 +20,7 @@ spec:
         - name: wait-for-keycloak
           image: alpine:3.19
           imagePullPolicy: IfNotPresent
-          command: ["/bin/sh", "-c", "until wget -qO/dev/null http://keycloak:9090/realms/master 2>/dev/null; do echo Waiting for Keycloak; sleep 3; done; echo Keycloak is ready"]
+          command: ["/bin/sh", "-c", "until wget -qO/dev/null http://keycloak:9095/realms/master 2>/dev/null; do echo Waiting for Keycloak; sleep 3; done; echo Keycloak is ready"]
           resources:
             requests:
               cpu: 50m

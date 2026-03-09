@@ -3,6 +3,7 @@ package ru.yandex.practicum.cash.service;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +51,7 @@ class CashServiceTest {
         WireMock.configureFor("localhost", wireMockServer.port());
 
         WebClient webClient = WebClient.builder().build();
-        cashService = new CashService(webClient, kafkaTemplate);
+        cashService = new CashService(webClient, kafkaTemplate, new SimpleMeterRegistry());
 
         ReflectionTestUtils.setField(cashService, "accountsServiceHost", "localhost");
         ReflectionTestUtils.setField(cashService, "accountsServicePort", wireMockServer.port());

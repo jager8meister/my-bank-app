@@ -9,5 +9,5 @@ spec:
   containers:
     - name: test
       image: busybox:1.36
-      command: ['wget', '-qO-', '--timeout=30', 'http://keycloak:9090/realms/bank-realm']
+      command: ['wget', '-qO-', '--timeout=30', 'http://keycloak:9095/realms/bank-realm']
   restartPolicy: Never

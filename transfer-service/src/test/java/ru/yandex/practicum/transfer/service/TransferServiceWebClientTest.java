@@ -1,6 +1,7 @@
 package ru.yandex.practicum.transfer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,11 @@ import ru.yandex.practicum.transfer.exception.TransferException;
 
 import java.nio.charset.StandardCharsets;
 
+import io.micrometer.core.instrument.Counter;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +47,9 @@ class TransferServiceWebClientTest {
     @Mock
     private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
+    @Mock
+    private MeterRegistry meterRegistry;
+
     private TransferService transferService;
 
     private WebClient.RequestBodyUriSpec requestBodyUriSpec;
@@ -53,7 +60,9 @@ class TransferServiceWebClientTest {
 
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(webClient, objectMapper, kafkaTemplate);
+        Counter mockCounter = mock(Counter.class);
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
+        transferService = new TransferService(webClient, objectMapper, kafkaTemplate, meterRegistry);
         requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
         requestBodySpec = mock(WebClient.RequestBodySpec.class);
         responseSpec = mock(WebClient.ResponseSpec.class);
